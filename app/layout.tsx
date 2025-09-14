@@ -1,22 +1,25 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
-}
+  title: "Juan Quenga Portfolio",
+  description: "Juan Quenga Portfolio",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap"
           rel="stylesheet"
@@ -29,7 +32,7 @@ export default function RootLayout({
 html { font-family: var(--font-sans); }
         `}</style>
       </head>
-      <body>{children}</body>
+      <body className="bg-neutral-950 text-white">{children}</body>
     </html>
-  )
+  );
 }
