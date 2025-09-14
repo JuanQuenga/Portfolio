@@ -131,7 +131,11 @@ export default function Page() {
                 {/* CTAs */}
                 <div className="mt-6 flex flex-wrap items-center gap-3">
                   <Button asChild size="lg" className="rounded-full">
-                    <Link href="mailto:juanquenga10@gmail.com">
+                    <Link
+                      href="mailto:juanquenga@gmail.com?subject=Let's work together&body=Hi Juan, I'd like to discuss a potential project with you."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Hire me
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
