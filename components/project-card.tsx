@@ -46,11 +46,11 @@ export default function ProjectCard({
           backgroundImage: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
         }}
       >
-        <div className="relative overflow-hidden rounded-[1.35rem] bg-black lg:h-full">
+        <div className="relative overflow-hidden rounded-[1.35rem] bg-black flex flex-col lg:h-full">
           {/* Screenshot placeholder */}
           <div
             className={cn(
-              "relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:h-full bg-gray-900/50 border border-white/10",
+              "relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:h-full bg-gray-900/50 border border-white/10 mb-0 sm:mb-0",
               imageContainerClassName
             )}
           >
@@ -121,7 +121,7 @@ export default function ProjectCard({
           </div>
 
           {/* Bottom content */}
-          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <div className="relative p-4 sm:absolute sm:inset-x-0 sm:bottom-0 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h3 className="text-lg font-semibold sm:text-xl">{title}</h3>
