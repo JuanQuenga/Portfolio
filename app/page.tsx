@@ -27,7 +27,14 @@ export default function Page() {
       title: "Piggies US",
       subtitle: "Modern Dating App",
       imageSrc: "/images/project-2.webp",
-      tags: ["NextJS", "Convex", "AuthKit", "Typescript", "Tailwind"],
+      tags: [
+        "NextJS",
+        "Convex",
+        "AuthKit",
+        "Typescript",
+        "Tailwind",
+        "Polar.sh",
+      ],
       href: "#piggies",
       priority: false,
       gradientFrom: "#111827",
@@ -124,8 +131,8 @@ export default function Page() {
 
                 <p className="mt-4 max-w-[42ch] text-lg text-white/70">
                   I'm an aspiring software engineer based in southeast Michigan.
-                  I use todays latest web technologies to build solutions for
-                  companies that able to scale and easy to maintain.
+                  I build solutions for companies that are able to scale,
+                  rapidly iterate & deploy, and easy to maintain.
                 </p>
 
                 {/* CTAs */}
