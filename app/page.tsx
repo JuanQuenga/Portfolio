@@ -123,9 +123,9 @@ export default function Page() {
                 />
 
                 <p className="mt-4 max-w-[42ch] text-lg text-white/70">
-                  Juan is an aspiring software engineer based in Michigan. He
-                  helps companies ship scalable and maintainable solutions using
-                  the latest web technologies.
+                  I'm an aspiring software engineer based in southeast Michigan.
+                  I use todays latest web technologies to build solutions for
+                  companies that able to scale and easy to maintain.
                 </p>
 
                 {/* CTAs */}
