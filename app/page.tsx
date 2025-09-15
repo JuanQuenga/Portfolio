@@ -13,7 +13,7 @@ export default function Page() {
   const projects = [
     {
       title: "Kaizen Customs",
-      subtitle: "NextJS Shopify App",
+      subtitle: "NextJS Shopify Site",
       imageSrc: "/images/project-1.webp",
       tags: ["NextJS", "Shopify", "Typescript", "Tailwind"],
       href: "#kaizen",
@@ -25,7 +25,7 @@ export default function Page() {
     },
     {
       title: "Piggies US",
-      subtitle: "Modern Dating App",
+      subtitle: "Social Media Site",
       imageSrc: "/images/project-2.webp",
       tags: [
         "NextJS",
@@ -44,7 +44,7 @@ export default function Page() {
     },
     {
       title: "PayMore Eletronics",
-      subtitle: "Modern E-Commerce Tools",
+      subtitle: "E-Commerce Tools",
       imageSrc: "/images/project-3.webp",
       tags: ["NextJS", "Convex", "AuthKit", "Typescript", "Tailwind"],
       href: "#paymore",
