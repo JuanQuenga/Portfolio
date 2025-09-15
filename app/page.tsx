@@ -126,13 +126,14 @@ export default function Page() {
                 {/* Headline with intro blur effect */}
                 <AnimatedHeading
                   className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl"
-                  lines={["I create solutions", "that solve problems"]}
+                  lines={["I build solutions", "that solve problems"]}
                 />
 
                 <p className="mt-4 max-w-[42ch] text-lg text-white/70">
                   I'm an aspiring software engineer based in southeast Michigan.
-                  I build solutions for companies that are able to scale,
-                  rapidly iterate & deploy, and easy to maintain.
+                  I build scalable & maintainable solutions for companies that
+                  allow for rapid iteration & deployment. Allowing for improved
+                  workflows and increased productivity.
                 </p>
 
                 {/* CTAs */}
