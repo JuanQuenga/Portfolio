@@ -3,7 +3,23 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Juan Quenga Portfolio",
-  description: "Juan Quenga Portfolio",
+  description:
+    "Software engineer based in southeast Michigan, passionate about building scalable and maintainable solutions.",
+  openGraph: {
+    title: "Juan Quenga Portfolio",
+    description:
+      "Software engineer based in southeast Michigan, passionate about building scalable and maintainable solutions.",
+    url: "https://juanquenga.vercel.app",
+    siteName: "Juan Quenga Portfolio",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Juan Quenga Portfolio",
+    description:
+      "Software engineer based in southeast Michigan, passionate about building scalable and maintainable solutions.",
+  },
 };
 
 export default function RootLayout({
