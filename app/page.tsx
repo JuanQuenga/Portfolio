@@ -130,10 +130,11 @@ export default function Page() {
                 />
 
                 <p className="mt-4 max-w-[42ch] text-lg text-white/70">
-                  I'm an aspiring software engineer based in southeast Michigan.
-                  I build scalable & maintainable solutions for companies that
-                  allow for rapid iteration & deployment. Allowing for improved
-                  workflows and increased productivity.
+                  I'm a software engineer based in southeast Michigan,
+                  passionate about building scalable and maintainable solutions.
+                  I leverage modern web technologies to tackle complex
+                  challenges and deliver solutions that create meaningful
+                  impact.
                 </p>
 
                 {/* CTAs */}
