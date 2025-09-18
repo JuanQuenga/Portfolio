@@ -68,12 +68,13 @@ export default function Page() {
     {
       title: "Multi Auto",
       subtitle: "Automotive Tools",
-      imageSrc: "/images/multi-auto.png",
+      imageSrc: "/images/project-5.webp",
       tags: ["React", "Typescript", "Tailwind"],
       href: "https://multi-auto.vercel.app",
       priority: false,
       gradientFrom: "#1f2937",
       gradientTo: "#8b5cf6",
+      screenshotSrc: "/screenshots/multi-auto.png",
     },
     // {
     //   title: "Hydra — AI assistant",
