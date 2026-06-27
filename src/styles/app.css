@@ -123,7 +123,7 @@
   html {
     min-height: 100%;
     font-family: var(--font-sans);
-    overflow-y: auto;
+    overflow: hidden;
     scroll-behavior: auto;
     scroll-padding-top: 0;
   }
@@ -131,12 +131,22 @@
   body {
     @apply bg-neutral-950 text-white;
     min-height: 100%;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 }
 
 @layer utilities {
+  .portfolio-stage {
+    overscroll-behavior: none;
+    touch-action: pan-y;
+  }
+
+  .portfolio-track {
+    will-change: transform;
+  }
+
   section[data-glass-context] {
+    height: 100svh;
     min-height: 100svh;
   }
 
@@ -600,13 +610,14 @@
     corner-shape: inherit;
   }
 
-  .glass-refraction-scene {
-    position: fixed;
-    inset: 0;
+  .glass-refraction-stage {
+    position: absolute;
+    top: calc(-1 * (100svh - var(--glass-bottom, max(1rem, env(safe-area-inset-bottom))) - var(--glass-height)));
+    left: calc(-1 * max(1rem, calc((100vw - var(--hero-glass-width)) / 2)));
     width: 100vw;
-    min-height: 100svh;
+    height: 100svh;
+    overflow: hidden;
     pointer-events: none;
-    transform: translate3d(0, var(--refraction-scroll-y), 0);
   }
 
   .project-glass-bar > :not(.project-glass-layer) {

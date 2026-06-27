@@ -22,7 +22,6 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import Lenis from "lenis";
 import { LiquidGlass } from "@/lib/liquid-glass-squircle";
 import { motion, useScroll, useSpring, useTransform } from "motion/react";
 import { Slider } from "@/components/ui/slider";
@@ -167,7 +166,12 @@ export default function PortfolioExperience() {
   const [glassSettings, setGlassSettings] =
     useState<HeroGlassSettings>(heroGlassPreset);
   const [showGlassControls, setShowGlassControls] = useState(false);
-  const { activeProjectIndex, scrollY } = useLenisScrollDetents();
+  const screenCount = projects.length + 4;
+  const { activeScreen, dragOffset, goToScreen } = useVirtualScreens(screenCount);
+  const activeProjectIndex =
+    activeScreen >= 2 && activeScreen < 2 + projects.length
+      ? activeScreen - 2
+      : null;
   const activeProject = useMemo(
     () =>
       activeProjectIndex === null ? null : (projects[activeProjectIndex] ?? null),
@@ -175,16 +179,25 @@ export default function PortfolioExperience() {
   );
 
   return (
-    <main className="relative min-h-screen isolate overflow-x-hidden bg-[#020203] text-[#f4f1ea]">
+    <main className="portfolio-stage relative h-screen isolate overflow-hidden bg-[#020203] text-[#f4f1ea]">
       <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
-      <Header />
-      <PageContent />
+      <Header onNavigate={goToScreen} />
+      <PageContent
+        activeScreen={activeScreen}
+        dragOffset={dragOffset}
+        onNavigate={goToScreen}
+      />
       <SharedGlassBar
         project={activeProject}
         settings={glassSettings}
         onOpenControls={() => setShowGlassControls(true)}
-        refractionTarget={<GlassRefractionScene scrollY={scrollY} />}
+        refractionTarget={
+          <GlassRefractionStage
+            activeScreen={activeScreen}
+            dragOffset={dragOffset}
+          />
+        }
       />
       <GlassControlPopover
         open={showGlassControls}
@@ -201,146 +214,125 @@ export default function PortfolioExperience() {
 
 function PageContent({
   mirror = false,
+  activeScreen = 0,
+  dragOffset = 0,
+  onNavigate,
 }: {
   mirror?: boolean;
+  activeScreen?: number;
+  dragOffset?: number;
+  onNavigate?: (screen: number) => void;
 }) {
   return (
-    <div className="relative z-10">
-      <Hero mirror={mirror} />
+    <motion.div
+      className="portfolio-track relative z-10"
+      animate={{ y: `calc(-${activeScreen * 100}svh + ${dragOffset}px)` }}
+      transition={{
+        duration: dragOffset === 0 ? 0.58 : 0.08,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
+      <Hero mirror={mirror} onNavigate={onNavigate} />
       <Work mirror={mirror} />
       <Practice mirror={mirror} />
       <Contact mirror={mirror} />
-    </div>
+    </motion.div>
   );
 }
 
-function useLenisScrollDetents() {
-  const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(
-    null,
-  );
-  const [scrollY, setScrollY] = useState(0);
+function useVirtualScreens(screenCount: number) {
+  const [activeScreen, setActiveScreen] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
 
   useEffect(() => {
-    let releaseTimer: number | undefined;
-    let isSettling = false;
-    let direction: -1 | 1 = 1;
+    let wheelTotal = 0;
+    let wheelTimer: number | undefined;
+    let touchStartY: number | undefined;
+    let lastTouchY: number | undefined;
 
-    const getActiveProjectIndex = () => {
-      const viewportCenter = window.innerHeight / 2;
-      const projectSections = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-project-index]"),
+    const getBoundedOffset = (delta: number) => {
+      const limit = window.innerHeight * 0.42;
+      return Math.max(-limit, Math.min(limit, -delta));
+    };
+
+    const go = (direction: -1 | 1) => {
+      setActiveScreen((current) =>
+        Math.max(0, Math.min(screenCount - 1, current + direction)),
       );
-
-      for (const section of projectSections) {
-        const rect = section.getBoundingClientRect();
-        if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
-          const value = section.dataset.projectIndex;
-          return value === undefined ? null : Number(value);
-        }
-      }
-
-      return null;
-    };
-
-    const getDetentTarget = () => {
-      const currentY = window.scrollY;
-      const screens = Array.from(
-        document.querySelectorAll<HTMLElement>("section[data-glass-context]"),
-      ).map((section) => section.getBoundingClientRect().top + currentY);
-
-      if (screens.length === 0) return currentY;
-
-      const previous =
-        [...screens].reverse().find((top) => top <= currentY + 2) ?? screens[0];
-      const next =
-        screens.find((top) => top > currentY + 2) ?? screens[screens.length - 1];
-
-      if (previous === undefined || next === undefined) return currentY;
-      if (previous === next) return previous;
-
-      const progress = (currentY - previous) / Math.max(1, next - previous);
-      const threshold = 0.34;
-
-      if (direction > 0) return progress >= threshold ? next : previous;
-      return progress <= 1 - threshold ? previous : next;
-    };
-
-    const updateActiveProject = () => {
-      const activeIndex = getActiveProjectIndex();
-      setActiveProjectIndex(Number.isFinite(activeIndex) ? activeIndex : null);
-      setScrollY(window.scrollY);
-    };
-
-    const lenis = new Lenis({
-      anchors: true,
-      autoRaf: true,
-      duration: 0.42,
-      easing: (t) => Math.min(1, 1.001 - 2 ** (-10 * t)),
-      smoothWheel: true,
-      syncTouch: false,
-      wheelMultiplier: 1,
-      prevent: (node) => node.closest("[data-scroll-native]") !== null,
-    });
-
-    lenis.on("scroll", updateActiveProject);
-
-    const settle = () => {
-      releaseTimer = undefined;
-      if (isSettling) return;
-      const target = getDetentTarget();
-      if (Math.abs(target - window.scrollY) < 2) return;
-
-      isSettling = true;
-      lenis.scrollTo(target, {
-        duration: 0.55,
-        easing: (t) => 1 - Math.pow(1 - t, 3),
-        onComplete: () => {
-          isSettling = false;
-          updateActiveProject();
-        },
-      });
-    };
-
-    const scheduleSettle = (nextDirection: -1 | 1) => {
-      direction = nextDirection;
-      isSettling = false;
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      releaseTimer = window.setTimeout(settle, 70);
+      setDragOffset(0);
+      wheelTotal = 0;
     };
 
     const handleWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
-      scheduleSettle(event.deltaY >= 0 ? 1 : -1);
+      wheelTotal += event.deltaY;
+      setDragOffset(getBoundedOffset(wheelTotal));
+      if (wheelTimer) window.clearTimeout(wheelTimer);
+      wheelTimer = window.setTimeout(() => {
+        if (Math.abs(wheelTotal) >= 70) go(wheelTotal > 0 ? 1 : -1);
+        else setDragOffset(0);
+        wheelTotal = 0;
+      }, 80);
     };
 
-    const handleTouchStart = () => {
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      releaseTimer = undefined;
-      isSettling = false;
+    const handleTouchStart = (event: TouchEvent) => {
+      touchStartY = event.touches[0]?.clientY;
+      lastTouchY = touchStartY;
     };
 
-    const handleTouchEnd = () => {
-      scheduleSettle(direction);
+    const handleTouchMove = (event: TouchEvent) => {
+      if (touchStartY === undefined) return;
+      lastTouchY = event.touches[0]?.clientY;
+      if (lastTouchY === undefined) return;
+      setDragOffset(getBoundedOffset(touchStartY - lastTouchY));
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (touchStartY === undefined) return;
+      const endY = event.changedTouches[0]?.clientY ?? lastTouchY;
+      if (endY === undefined) return;
+      const delta = touchStartY - endY;
+      if (Math.abs(delta) >= 48) go(delta > 0 ? 1 : -1);
+      else setDragOffset(0);
+      touchStartY = undefined;
+      lastTouchY = undefined;
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (["ArrowDown", "PageDown", " "].includes(event.key)) {
+        event.preventDefault();
+        go(1);
+      }
+      if (["ArrowUp", "PageUp"].includes(event.key)) {
+        event.preventDefault();
+        go(-1);
+      }
     };
 
     window.addEventListener("wheel", handleWheel, { passive: true });
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
-
-    updateActiveProject();
-    lenis.resize();
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      if (releaseTimer) window.clearTimeout(releaseTimer);
+      if (wheelTimer) window.clearTimeout(wheelTimer);
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
-      lenis.off("scroll", updateActiveProject);
-      lenis.destroy();
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [screenCount]);
 
-  return { activeProjectIndex, scrollY };
+  return {
+    activeScreen,
+    dragOffset,
+    goToScreen: (screen: number) => {
+      setDragOffset(0);
+      setActiveScreen(Math.max(0, Math.min(screenCount - 1, screen)));
+    },
+  };
 }
 
 function ParallaxBackdrop() {
@@ -388,11 +380,15 @@ function ParallaxBackdrop() {
   );
 }
 
-function Header() {
+function Header({ onNavigate }: { onNavigate: (screen: number) => void }) {
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex items-start justify-between px-4 pt-4 sm:px-7 sm:pt-6">
       <a
         href="#top"
+        onClick={(event) => {
+          event.preventDefault();
+          onNavigate(0);
+        }}
         className="glass-button inline-flex size-12 items-center justify-center text-[#f4f1ea]"
         aria-label="Juan Quenga home"
       >
@@ -400,13 +396,34 @@ function Header() {
       </a>
       <div className="flex items-center gap-3">
         <nav className="liquid-glass hidden h-12 items-center gap-7 px-6 text-xs font-semibold uppercase tracking-[0.16em] text-[#f4f1ea]/68 sm:flex">
-          <a href="#work" className="transition hover:text-white">
+          <a
+            href="#work"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate(1);
+            }}
+            className="transition hover:text-white"
+          >
             Work
           </a>
-          <a href="#practice" className="transition hover:text-white">
+          <a
+            href="#practice"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate(projects.length + 2);
+            }}
+            className="transition hover:text-white"
+          >
             Practice
           </a>
-          <a href="#contact" className="transition hover:text-white">
+          <a
+            href="#contact"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate(projects.length + 3);
+            }}
+            className="transition hover:text-white"
+          >
             Contact
           </a>
         </nav>
@@ -419,6 +436,10 @@ function Header() {
         </a>
         <a
           href="#work"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate(1);
+          }}
           className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
           aria-label="Open work section"
         >
@@ -431,8 +452,10 @@ function Header() {
 
 function Hero({
   mirror = false,
+  onNavigate,
 }: {
   mirror?: boolean;
+  onNavigate?: (screen: number) => void;
 }) {
   return (
     <section
@@ -456,6 +479,10 @@ function Hero({
           <Reveal delay={0.08} className="hidden lg:block">
             <a
               href="#work"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate?.(1);
+              }}
               className="group block pb-2 text-right text-sm font-black text-[#f4f1ea]"
             >
               Work
@@ -618,15 +645,16 @@ function SharedGlassBar({
   );
 }
 
-function GlassRefractionScene({ scrollY }: { scrollY: number }) {
+function GlassRefractionStage({
+  activeScreen,
+  dragOffset,
+}: {
+  activeScreen: number;
+  dragOffset: number;
+}) {
   return (
-    <div
-      className="glass-refraction-scene"
-      style={{ "--refraction-scroll-y": `${-scrollY}px` } as CSSProperties}
-      aria-hidden="true"
-    >
-      <ParallaxBackdrop />
-      <PageContent mirror />
+    <div className="glass-refraction-stage" aria-hidden="true">
+      <PageContent mirror activeScreen={activeScreen} dragOffset={dragOffset} />
     </div>
   );
 }
