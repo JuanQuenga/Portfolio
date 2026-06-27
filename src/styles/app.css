@@ -137,12 +137,22 @@
 
 @layer utilities {
   .portfolio-stage {
+    --drag-offset: 0px;
+    --screen-transition: transform 580ms cubic-bezier(0.22, 1, 0.36, 1);
     overscroll-behavior: none;
     touch-action: pan-y;
   }
 
   .portfolio-track {
     will-change: transform;
+  }
+
+  .portfolio-screen {
+    contain: layout paint;
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translate3d(0, var(--screen-y, 0), 0);
+    transition: var(--screen-transition, none);
   }
 
   section[data-glass-context] {
@@ -618,6 +628,61 @@
     height: 100svh;
     overflow: hidden;
     pointer-events: none;
+    contain: strict;
+  }
+
+  .glass-refraction-panel {
+    width: 100vw;
+    height: 100svh;
+    overflow: hidden;
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translate3d(0, var(--screen-y, 0), 0);
+    transition: var(--screen-transition, none);
+    background:
+      radial-gradient(circle at 22% 70%, rgba(67, 209, 255, 0.18), transparent 36rem),
+      radial-gradient(circle at 82% 22%, rgba(215, 255, 99, 0.16), transparent 32rem),
+      #020203;
+  }
+
+  .glass-refraction-project-screen {
+    display: flex;
+    width: 100vw;
+    height: 100svh;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(4rem, 9svh, 6rem) 1rem clamp(7rem, 14svh, 10rem);
+  }
+
+  .glass-refraction-project-shot {
+    width: min(calc(100vw - 2rem), calc((100svh - 13rem) * 16 / 9), 90rem);
+    max-height: calc(100svh - 13rem);
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: calc(var(--project-shot-radius, clamp(1.6rem, 3vw, 3rem)) - var(--project-shot-padding, clamp(0.2rem, 0.45vw, 0.38rem)));
+    corner-shape: squircle;
+  }
+
+  @media (min-width: 1024px) {
+    .glass-refraction-project-shot {
+      width: min(calc(100vw - 9rem), calc((100svh - 13rem) * 16 / 9), 96rem);
+    }
+  }
+
+  .glass-refraction-panel-home {
+    background:
+      radial-gradient(circle at 18% 72%, rgba(67, 209, 255, 0.2), transparent 34rem),
+      radial-gradient(circle at 78% 20%, rgba(215, 255, 99, 0.18), transparent 30rem),
+      #020203;
+  }
+
+  .glass-refraction-panel-work,
+  .glass-refraction-panel-practice,
+  .glass-refraction-panel-contact {
+    background:
+      linear-gradient(135deg, rgba(244, 241, 234, 0.08), transparent 38%),
+      radial-gradient(circle at 72% 34%, rgba(215, 255, 99, 0.14), transparent 30rem),
+      #020203;
   }
 
   .project-glass-bar > :not(.project-glass-layer) {

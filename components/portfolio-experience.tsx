@@ -3,10 +3,13 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
+  type RefObject,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -23,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { LiquidGlass } from "@/lib/liquid-glass-squircle";
-import { motion, useScroll, useSpring, useTransform } from "motion/react";
+import { motion } from "motion/react";
 import { Slider } from "@/components/ui/slider";
 
 const projects = [
@@ -166,8 +169,9 @@ export default function PortfolioExperience() {
   const [glassSettings, setGlassSettings] =
     useState<HeroGlassSettings>(heroGlassPreset);
   const [showGlassControls, setShowGlassControls] = useState(false);
+  const stageRef = useRef<HTMLElement | null>(null);
   const screenCount = projects.length + 4;
-  const { activeScreen, dragOffset, goToScreen } = useVirtualScreens(screenCount);
+  const { activeScreen, goToScreen } = useVirtualScreens(screenCount, stageRef);
   const activeProjectIndex =
     activeScreen >= 2 && activeScreen < 2 + projects.length
       ? activeScreen - 2
@@ -179,13 +183,15 @@ export default function PortfolioExperience() {
   );
 
   return (
-    <main className="portfolio-stage relative h-screen isolate overflow-hidden bg-[#020203] text-[#f4f1ea]">
+    <main
+      ref={stageRef}
+      className="portfolio-stage relative h-screen isolate overflow-hidden bg-[#020203] text-[#f4f1ea]"
+    >
       <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
       <Header onNavigate={goToScreen} />
       <PageContent
         activeScreen={activeScreen}
-        dragOffset={dragOffset}
         onNavigate={goToScreen}
       />
       <SharedGlassBar
@@ -195,7 +201,6 @@ export default function PortfolioExperience() {
         refractionTarget={
           <GlassRefractionStage
             activeScreen={activeScreen}
-            dragOffset={dragOffset}
           />
         }
       />
@@ -215,38 +220,89 @@ export default function PortfolioExperience() {
 function PageContent({
   mirror = false,
   activeScreen = 0,
-  dragOffset = 0,
   onNavigate,
 }: {
   mirror?: boolean;
   activeScreen?: number;
-  dragOffset?: number;
   onNavigate?: (screen: number) => void;
 }) {
+  const visibleScreens = [activeScreen - 1, activeScreen, activeScreen + 1].filter(
+    (screen) => screen >= 0 && screen < projects.length + 4,
+  );
+
   return (
-    <motion.div
-      className="portfolio-track relative z-10"
-      animate={{ y: `calc(-${activeScreen * 100}svh + ${dragOffset}px)` }}
-      transition={{
-        duration: dragOffset === 0 ? 0.58 : 0.08,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-    >
-      <Hero mirror={mirror} onNavigate={onNavigate} />
-      <Work mirror={mirror} />
-      <Practice mirror={mirror} />
-      <Contact mirror={mirror} />
-    </motion.div>
+    <div className="portfolio-track relative z-10 h-[100svh] overflow-hidden">
+      {visibleScreens.map((screen) => (
+        <div
+          key={screen}
+          className="portfolio-screen absolute inset-0"
+          style={
+            {
+              "--screen-y": `calc(${(screen - activeScreen) * 100}svh + var(--drag-offset, 0px))`,
+            } as CSSProperties
+          }
+        >
+          <ScreenContent
+            screen={screen}
+            mirror={mirror}
+            onNavigate={onNavigate}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 
-function useVirtualScreens(screenCount: number) {
+function ScreenContent({
+  screen,
+  mirror,
+  onNavigate,
+}: {
+  screen: number;
+  mirror: boolean;
+  onNavigate?: (screen: number) => void;
+}) {
+  if (screen === 0) return <Hero mirror={mirror} onNavigate={onNavigate} />;
+  if (screen === 1) return <WorkIntro mirror={mirror} />;
+
+  const projectIndex = screen - 2;
+  if (projectIndex >= 0 && projectIndex < projects.length) {
+    const project = projects[projectIndex];
+    if (!project) return null;
+    return (
+      <ProjectScreen
+        index={projectIndex}
+        project={project}
+        mirror={mirror}
+      />
+    );
+  }
+
+  if (screen === projects.length + 2) return <Practice mirror={mirror} />;
+  if (screen === projects.length + 3) return <Contact mirror={mirror} />;
+  return null;
+}
+
+const screenTransition = "transform 580ms cubic-bezier(0.22, 1, 0.36, 1)";
+
+function useVirtualScreens(
+  screenCount: number,
+  stageRef: RefObject<HTMLElement | null>,
+) {
   const [activeScreen, setActiveScreen] = useState(0);
-  const [dragOffset, setDragOffset] = useState(0);
+  const activeScreenRef = useRef(activeScreen);
+  const dragOffsetFrame = useRef<number | undefined>(undefined);
+  const pendingDragOffset = useRef(0);
+
+  useEffect(() => {
+    activeScreenRef.current = activeScreen;
+  }, [activeScreen]);
 
   useEffect(() => {
     let wheelTotal = 0;
     let wheelTimer: number | undefined;
+    let transitionTimer: number | undefined;
+    let isTransitioning = false;
     let touchStartY: number | undefined;
     let lastTouchY: number | undefined;
 
@@ -255,36 +311,90 @@ function useVirtualScreens(screenCount: number) {
       return Math.max(-limit, Math.min(limit, -delta));
     };
 
+    const setDragOffsetOnFrame = (offset: number) => {
+      pendingDragOffset.current = offset;
+      if (dragOffsetFrame.current !== undefined) return;
+      dragOffsetFrame.current = window.requestAnimationFrame(() => {
+        dragOffsetFrame.current = undefined;
+        stageRef.current?.style.setProperty(
+          "--drag-offset",
+          `${pendingDragOffset.current}px`,
+        );
+      });
+    };
+
+    const setScreenTransition = (transition: string) => {
+      stageRef.current?.style.setProperty("--screen-transition", transition);
+    };
+
+    const setDragOffsetNow = (offset: number) => {
+      pendingDragOffset.current = offset;
+      if (dragOffsetFrame.current !== undefined) {
+        window.cancelAnimationFrame(dragOffsetFrame.current);
+        dragOffsetFrame.current = undefined;
+      }
+      stageRef.current?.style.setProperty("--drag-offset", `${offset}px`);
+    };
+
     const go = (direction: -1 | 1) => {
-      setActiveScreen((current) =>
-        Math.max(0, Math.min(screenCount - 1, current + direction)),
+      if (isTransitioning) return;
+      const nextScreen = Math.max(
+        0,
+        Math.min(screenCount - 1, activeScreenRef.current + direction),
       );
-      setDragOffset(0);
+
+      if (nextScreen === activeScreenRef.current) {
+        setScreenTransition(screenTransition);
+        setDragOffsetOnFrame(0);
+        wheelTotal = 0;
+        return;
+      }
+
+      isTransitioning = true;
+      if (transitionTimer) window.clearTimeout(transitionTimer);
+      setScreenTransition(screenTransition);
+      flushSync(() => {
+        setActiveScreen(nextScreen);
+      });
+      activeScreenRef.current = nextScreen;
+      setDragOffsetNow(0);
       wheelTotal = 0;
+      transitionTimer = window.setTimeout(() => {
+        isTransitioning = false;
+      }, 620);
     };
 
     const handleWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
+      if (isTransitioning) return;
+      setScreenTransition("none");
       wheelTotal += event.deltaY;
-      setDragOffset(getBoundedOffset(wheelTotal));
+      setDragOffsetOnFrame(getBoundedOffset(wheelTotal));
+      if (Math.abs(wheelTotal) >= 70) {
+        if (wheelTimer) window.clearTimeout(wheelTimer);
+        go(wheelTotal > 0 ? 1 : -1);
+        return;
+      }
       if (wheelTimer) window.clearTimeout(wheelTimer);
       wheelTimer = window.setTimeout(() => {
-        if (Math.abs(wheelTotal) >= 70) go(wheelTotal > 0 ? 1 : -1);
-        else setDragOffset(0);
+        setScreenTransition(screenTransition);
+        setDragOffsetOnFrame(0);
         wheelTotal = 0;
       }, 80);
     };
 
     const handleTouchStart = (event: TouchEvent) => {
+      setScreenTransition("none");
       touchStartY = event.touches[0]?.clientY;
       lastTouchY = touchStartY;
     };
 
     const handleTouchMove = (event: TouchEvent) => {
       if (touchStartY === undefined) return;
+      if (isTransitioning) return;
       lastTouchY = event.touches[0]?.clientY;
       if (lastTouchY === undefined) return;
-      setDragOffset(getBoundedOffset(touchStartY - lastTouchY));
+      setDragOffsetOnFrame(getBoundedOffset(touchStartY - lastTouchY));
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
@@ -293,7 +403,10 @@ function useVirtualScreens(screenCount: number) {
       if (endY === undefined) return;
       const delta = touchStartY - endY;
       if (Math.abs(delta) >= 48) go(delta > 0 ? 1 : -1);
-      else setDragOffset(0);
+      else {
+        setScreenTransition(screenTransition);
+        setDragOffsetOnFrame(0);
+      }
       touchStartY = undefined;
       lastTouchY = undefined;
     };
@@ -317,6 +430,10 @@ function useVirtualScreens(screenCount: number) {
 
     return () => {
       if (wheelTimer) window.clearTimeout(wheelTimer);
+      if (transitionTimer) window.clearTimeout(transitionTimer);
+      if (dragOffsetFrame.current !== undefined) {
+        window.cancelAnimationFrame(dragOffsetFrame.current);
+      }
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
@@ -327,56 +444,39 @@ function useVirtualScreens(screenCount: number) {
 
   return {
     activeScreen,
-    dragOffset,
     goToScreen: (screen: number) => {
-      setDragOffset(0);
-      setActiveScreen(Math.max(0, Math.min(screenCount - 1, screen)));
+      const nextScreen = Math.max(0, Math.min(screenCount - 1, screen));
+      pendingDragOffset.current = 0;
+      activeScreenRef.current = nextScreen;
+      stageRef.current?.style.setProperty("--screen-transition", screenTransition);
+      stageRef.current?.style.setProperty("--drag-offset", "0px");
+      setActiveScreen(nextScreen);
     },
   };
 }
 
 function ParallaxBackdrop() {
-  const { scrollYProgress } = useScroll();
-  const smoothScrollProgress = useSpring(scrollYProgress, {
-    stiffness: 58,
-    damping: 24,
-    mass: 0.42,
-    restDelta: 0.001,
-  });
-
-  const layerY = useTransform(smoothScrollProgress, [0, 1], [-28, 28]);
-  const gridY = useTransform(smoothScrollProgress, [0, 1], [-180, 180]);
-  const beamY = useTransform(smoothScrollProgress, [0, 1], [-240, 240]);
-  const glowY = useTransform(smoothScrollProgress, [0, 1], [170, -170]);
-  const glowX = useTransform(smoothScrollProgress, [0, 1], [-70, 70]);
-
   return (
-    <motion.div
+    <div
       className="site-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden"
-      style={{ y: layerY }}
       aria-hidden="true"
     >
-      <motion.div
+      <div
         className="site-backdrop-grid absolute -inset-[28svh]"
-        style={{ y: gridY }}
       />
-      <motion.div
+      <div
         className="site-backdrop-beam absolute left-1/2 top-1/2 h-[34rem] w-[150vw] -translate-x-1/2 -translate-y-1/2 rotate-[-18deg]"
-        style={{ y: beamY }}
       />
-      <motion.div
+      <div
         className="site-backdrop-glow site-backdrop-glow-cyan absolute -left-[18rem] top-[58svh] h-[42rem] w-[42rem]"
-        style={{ x: glowX, y: glowY }}
       />
-      <motion.div
+      <div
         className="site-backdrop-glow site-backdrop-glow-lime absolute -right-[16rem] top-[8svh] h-[38rem] w-[38rem]"
-        style={{ x: glowX, y: beamY }}
       />
-      <motion.div
+      <div
         className="site-backdrop-glow site-backdrop-glow-rose absolute left-[44vw] top-[72svh] h-[28rem] w-[28rem]"
-        style={{ x: glowX, y: beamY }}
       />
-    </motion.div>
+    </div>
   );
 }
 
@@ -647,16 +747,54 @@ function SharedGlassBar({
 
 function GlassRefractionStage({
   activeScreen,
-  dragOffset,
 }: {
   activeScreen: number;
-  dragOffset: number;
 }) {
+  const visibleScreens = [activeScreen - 1, activeScreen, activeScreen + 1].filter(
+    (screen) => screen >= 0 && screen < projects.length + 4,
+  );
+
   return (
     <div className="glass-refraction-stage" aria-hidden="true">
-      <PageContent mirror activeScreen={activeScreen} dragOffset={dragOffset} />
+      {visibleScreens.map((screen) => (
+        <div
+          key={screen}
+          className="glass-refraction-panel absolute inset-0"
+          style={
+            {
+              "--screen-y": `calc(${(screen - activeScreen) * 100}svh + var(--drag-offset, 0px))`,
+            } as CSSProperties
+          }
+        >
+          <RefractionPanel screen={screen} />
+        </div>
+      ))}
     </div>
   );
+}
+
+function RefractionPanel({ screen }: { screen: number }) {
+  const project = screen >= 2 && screen < 2 + projects.length
+    ? projects[screen - 2]
+    : null;
+
+  if (project) {
+    return (
+      <div className="glass-refraction-project-screen">
+        <div className="glass-refraction-project-shot">
+          <img
+            src={project.screenshotSrc}
+            alt=""
+            loading="eager"
+            decoding="async"
+            className="h-full w-full object-cover object-top"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="h-full w-full" />;
 }
 
 function GlassControlPopover({
@@ -818,37 +956,26 @@ function GlitchTitle({ lines }: { lines: string[] }) {
   );
 }
 
-function Work({
+function WorkIntro({
   mirror = false,
 }: {
   mirror?: boolean;
 }) {
   return (
-    <>
-      <section
-        id={mirror ? undefined : "work"}
-        data-glass-context={mirror ? undefined : "work"}
-        className="relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
-      >
-        <Reveal className="mx-auto grid w-full max-w-7xl content-end gap-6 border-b border-[#f4f1ea]/12 pb-36 lg:grid-cols-[0.78fr_1fr] lg:items-end">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
-            Selected Work
-          </p>
-          <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
-            Recent builds.
-          </h2>
-        </Reveal>
-      </section>
-
-      {projects.map((project, index) => (
-        <ProjectScreen
-          key={project.title}
-          index={index}
-          project={project}
-          mirror={mirror}
-        />
-      ))}
-    </>
+    <section
+      id={mirror ? undefined : "work"}
+      data-glass-context={mirror ? undefined : "work"}
+      className="relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
+    >
+      <Reveal className="mx-auto grid w-full max-w-7xl content-end gap-6 border-b border-[#f4f1ea]/12 pb-36 lg:grid-cols-[0.78fr_1fr] lg:items-end">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
+          Selected Work
+        </p>
+        <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
+          Recent builds.
+        </h2>
+      </Reveal>
+    </section>
   );
 }
 
