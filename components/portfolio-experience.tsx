@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -14,44 +14,20 @@ import {
   PanelsTopLeft,
 } from "lucide-react";
 import { LiquidGlass } from "liquid-glass-web-react";
-import { motion } from "motion/react";
+import { motion, useScroll, useSpring, useTransform } from "motion/react";
 
 const projects = [
   {
     title: "Volt",
-    summary: "Scanner-first product capture with review flows for messy item data.",
+    summary:
+      "Scanner-first product capture with review flows for messy item data.",
     href: "https://volt-scanner.vercel.app/",
     screenshotSrc: "/screenshots/volt.png",
   },
   {
-    title: "Piggies US",
-    summary: "A social app with accounts, subscriptions, and live community screens.",
-    href: "https://piggies.us",
-    githubHref: "https://github.com/piggies-us/piggies-us",
-    screenshotSrc: "/screenshots/piggies.png",
-  },
-  {
-    title: "PayMore Electronics",
-    summary: "Store workflow screens for scanning, editing, and moving inventory faster.",
-    href: "https://paymore-extension.vercel.app",
-    githubHref: "https://github.com/paymore-eletronics/paymore-eletronics",
-    screenshotSrc: "/screenshots/paymore.png",
-  },
-  {
-    title: "Herman's Modern Bakery",
-    summary: "A simple storefront for menu, hours, location, and quick mobile browsing.",
-    href: "https://hermans.vercel.app",
-    screenshotSrc: "/screenshots/hermans.png",
-  },
-  {
-    title: "Multi Auto",
-    summary: "Responsive service screens for compact workflows and quick comparisons.",
-    href: "https://multi-auto.vercel.app",
-    screenshotSrc: "/screenshots/multi-auto.png",
-  },
-  {
     title: "ClashCrown",
-    summary: "A Clash Royale companion for lookup, comparison, and player tools.",
+    summary:
+      "A Clash Royale companion for lookup, comparison, and player tools.",
     href: "https://clashcrown.vercel.app/",
     screenshotSrc: "/screenshots/clashcrown.png",
   },
@@ -61,9 +37,32 @@ const projects = [
     href: "https://brawlstatsio.vercel.app/",
     screenshotSrc: "/screenshots/brawlstats.png",
   },
+  {
+    title: "Herman's Modern Bakery",
+    summary:
+      "A simple storefront for menu, hours, location, and quick mobile browsing.",
+    href: "https://hermans.vercel.app",
+    screenshotSrc: "/screenshots/hermans.png",
+  },
+  {
+    title: "Multi Auto",
+    summary:
+      "Responsive service screens for compact workflows and quick comparisons.",
+    href: "https://multi-auto.vercel.app",
+    screenshotSrc: "/screenshots/multi-auto.png",
+  },
+  {
+    title: "Piggies US",
+    summary:
+      "A social app with accounts, subscriptions, and live community screens.",
+    href: "https://www.piggies.us/",
+    githubHref: "https://github.com/piggies-us/piggies-us",
+    screenshotSrc: "/screenshots/piggies.png",
+  },
 ];
 
 const heroSkills = ["React", "Next", "TanStack", "Convex"];
+const heroNameLines = ["Juan", "Quenga"];
 
 const capabilities = [
   {
@@ -84,16 +83,176 @@ const capabilities = [
 ];
 
 export default function PortfolioExperience() {
+  const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const sections = document.querySelectorAll<HTMLElement>(
+      "[data-glass-context]",
+    );
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const activeEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!activeEntry) return;
+
+        const projectIndex = (activeEntry.target as HTMLElement).dataset
+          .projectIndex;
+        setActiveProjectIndex(projectIndex ? Number(projectIndex) : null);
+      },
+      {
+        root: null,
+        rootMargin: "-35% 0px -35% 0px",
+        threshold: [0.2, 0.45, 0.7],
+      },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const getSections = () => [
+      ...document.querySelectorAll<HTMLElement>("section[data-glass-context]"),
+    ];
+    let isSnapping = false;
+    let touchStartY = 0;
+
+    const nearestSectionIndex = (sections: HTMLElement[]) => {
+      const viewportMiddle = window.scrollY + window.innerHeight / 2;
+
+      return sections.reduce((nearestIndex, section, index) => {
+        const nearestDistance = Math.abs(
+          sections[nearestIndex].offsetTop +
+            sections[nearestIndex].offsetHeight / 2 -
+            viewportMiddle,
+        );
+        const sectionDistance = Math.abs(
+          section.offsetTop + section.offsetHeight / 2 - viewportMiddle,
+        );
+
+        return sectionDistance < nearestDistance ? index : nearestIndex;
+      }, 0);
+    };
+
+    const snapByDirection = (direction: 1 | -1) => {
+      if (isSnapping) return;
+
+      const sections = getSections();
+      const currentIndex = nearestSectionIndex(sections);
+      const nextIndex = Math.min(
+        Math.max(currentIndex + direction, 0),
+        sections.length - 1,
+      );
+
+      if (nextIndex === currentIndex) return;
+
+      isSnapping = true;
+      sections[nextIndex].scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      window.setTimeout(() => {
+        isSnapping = false;
+      }, 850);
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) < 12) return;
+
+      event.preventDefault();
+      snapByDirection(event.deltaY > 0 ? 1 : -1);
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      touchStartY = event.touches[0]?.clientY ?? 0;
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      const touchEndY = event.changedTouches[0]?.clientY ?? touchStartY;
+      const deltaY = touchStartY - touchEndY;
+
+      if (Math.abs(deltaY) < 42) return;
+      snapByDirection(deltaY > 0 ? 1 : -1);
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, []);
+
+  const activeProject =
+    activeProjectIndex === null ? null : (projects[activeProjectIndex] ?? null);
+
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#020203] text-[#f4f1ea]">
-      <div className="site-backdrop pointer-events-none fixed inset-0" />
+    <main className="relative min-h-screen isolate overflow-x-hidden bg-[#020203] text-[#f4f1ea]">
+      <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
       <Header />
-      <Hero />
-      <Work />
-      <Practice />
-      <Contact />
+      <div className="relative z-10">
+        <Hero />
+        <Work />
+        <Practice />
+        <Contact />
+      </div>
+      <FixedGlassBar project={activeProject} />
     </main>
+  );
+}
+
+function ParallaxBackdrop() {
+  const { scrollYProgress } = useScroll();
+  const smoothScrollProgress = useSpring(scrollYProgress, {
+    stiffness: 58,
+    damping: 24,
+    mass: 0.42,
+    restDelta: 0.001,
+  });
+
+  const layerY = useTransform(smoothScrollProgress, [0, 1], [-28, 28]);
+  const gridY = useTransform(smoothScrollProgress, [0, 1], [-180, 180]);
+  const beamY = useTransform(smoothScrollProgress, [0, 1], [-240, 240]);
+  const glowY = useTransform(smoothScrollProgress, [0, 1], [170, -170]);
+  const glowX = useTransform(smoothScrollProgress, [0, 1], [-70, 70]);
+
+  return (
+    <motion.div
+      className="site-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden"
+      style={{ y: layerY }}
+      aria-hidden="true"
+    >
+      <motion.div
+        className="site-backdrop-grid absolute -inset-[28svh]"
+        style={{ y: gridY }}
+      />
+      <motion.div
+        className="site-backdrop-beam absolute left-1/2 top-1/2 h-[34rem] w-[150vw] -translate-x-1/2 -translate-y-1/2 rotate-[-18deg]"
+        style={{ y: beamY }}
+      />
+      <motion.div
+        className="site-backdrop-glow site-backdrop-glow-cyan absolute -left-[18rem] top-[58svh] h-[42rem] w-[42rem]"
+        style={{ x: glowX, y: glowY }}
+      />
+      <motion.div
+        className="site-backdrop-glow site-backdrop-glow-lime absolute -right-[16rem] top-[8svh] h-[38rem] w-[38rem]"
+        style={{ x: glowX, y: beamY }}
+      />
+      <motion.div
+        className="site-backdrop-glow site-backdrop-glow-rose absolute left-[44vw] top-[72svh] h-[28rem] w-[28rem]"
+        style={{ x: glowX, y: beamY }}
+      />
+    </motion.div>
   );
 }
 
@@ -103,18 +262,22 @@ function GlassRefractionLayer() {
       x={0.5}
       y={0.5}
       width={1480}
-      height={124}
+      height={170}
       radius="auto"
       strength={0.06}
-      chromaticAberration={0.12}
+      chromaticAberration={0.3}
       blur={0}
-      depth={18}
-      curvature={0.9}
-      glow={0.08}
-      edgeHighlight={0.22}
+      depth={24}
+      curvature={0.82}
+      splay={1}
+      glow={0.28}
+      edgeHighlight={0.34}
+      specular={1}
+      specularAngle={130}
       quality={512}
       shadow={false}
       className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-100"
+      style={{ position: "absolute", inset: 0 }}
       aria-hidden="true"
     >
       <div className="glass-backdrop absolute inset-0 rounded-[inherit]" />
@@ -167,17 +330,18 @@ function Hero() {
   return (
     <section
       id="top"
-      className="relative flex min-h-[100svh] px-4 pb-6 pt-28 sm:px-7 sm:pb-8"
+      data-glass-context="home"
+      className="relative flex min-h-[100svh] px-4 pb-40 pt-28 sm:px-7 sm:pb-36"
     >
       <div className="mx-auto flex w-full max-w-[1600px] flex-col justify-end">
         <div className="mb-10 grid gap-10 lg:grid-cols-[1fr_300px] lg:items-end">
           <Reveal>
             <Code2 className="mb-6 size-10 text-[#f4f1ea]" />
-            <h1 className="hero-name hero-title font-black uppercase leading-[0.82] tracking-normal text-[#f4f1ea]">
-              <span className="block">Juan</span>
-              <span className="block">Quenga</span>
-            </h1>
-            <p className="mt-3 max-w-[22rem] font-mono text-[clamp(0.95rem,4.7vw,2.25rem)] font-black uppercase leading-tight tracking-normal text-white sm:max-w-full">
+            <GlitchTitle lines={heroNameLines} />
+            <p
+              className="hero-kicker mt-3 max-w-[22rem] font-mono text-[clamp(0.95rem,4.7vw,2.25rem)] font-black uppercase leading-tight tracking-normal text-white sm:max-w-full"
+              data-text="Full Stack Product Engineer"
+            >
               Full Stack Product Engineer
             </p>
           </Reveal>
@@ -192,88 +356,35 @@ function Hero() {
             </a>
           </Reveal>
         </div>
-
-        <Reveal delay={0.12} className="liquid-glass hero-glass p-4 sm:p-5">
-          <GlassRefractionLayer />
-          <div className="grid gap-5 text-sm font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1.2fr_1.4fr_1fr] lg:grid-cols-[0.7fr_1.45fr_2fr_0.8fr_1.15fr] lg:items-center">
-            <div className="flex items-center gap-3">
-              <div className="glass-button flex size-14 shrink-0 items-center justify-center font-mono text-lg font-black leading-none text-white">
-                JQ
-              </div>
-              <div>
-                <div className="text-white">Juan Quenga</div>
-                <div className="text-[#f4f1ea]/58">Product interfaces</div>
-              </div>
-            </div>
-
-            <p className="max-w-md leading-6 text-[#f4f1ea]/62">
-              I build React products for stores, local businesses, and internal teams.
-            </p>
-
-            <div className="flex flex-wrap gap-x-8 gap-y-3 text-[#f4f1ea]/72">
-              {heroSkills.map((skill) => (
-                <span key={skill}>{skill}</span>
-              ))}
-            </div>
-
-            <a
-              href="https://github.com/JuanQuenga"
-              className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-              aria-label="Juan Quenga GitHub"
-            >
-              <Github className="size-5" />
-            </a>
-
-            <div className="flex items-center gap-2 text-[#f4f1ea]/72">
-              <MapPin className="size-4 text-[#d7ff63]" />
-              Southeast Michigan
-            </div>
-          </div>
-        </Reveal>
       </div>
     </section>
   );
 }
 
-function Work() {
-  return (
-    <section id="work" className="relative px-4 py-16 sm:px-6 lg:py-24">
-      <div className="mx-auto max-w-7xl">
-        <Reveal className="mb-10 grid gap-6 border-b border-[#f4f1ea]/12 pb-8 lg:grid-cols-[0.78fr_1fr]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
-            Selected Work
-          </p>
-          <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
-            Recent builds.
-          </h2>
-        </Reveal>
-
-        <div className="divide-y divide-[#f4f1ea]/12 border-y border-[#f4f1ea]/12">
-          {projects.map((project) => (
-            <ProjectRow key={project.title} project={project} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProjectRow({
+function FixedGlassBar({
   project,
 }: {
-  project: (typeof projects)[number];
+  project: (typeof projects)[number] | null;
 }) {
   return (
-    <Reveal>
-      <article className="grid gap-6 py-8 lg:grid-cols-[0.44fr_0.56fr] lg:gap-10 lg:py-12">
-        <div>
-          <h3 className="text-4xl font-black uppercase leading-none tracking-normal sm:text-5xl">
-            {project.title}
-          </h3>
-          <p className="mt-5 max-w-xl leading-7 text-[#f4f1ea]/64">
-            {project.summary}
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
+    <aside className="liquid-glass hero-glass p-4 sm:p-5">
+      <GlassRefractionLayer />
+      {project ? (
+        <div className="grid gap-4 text-sm font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[0.52fr_1fr_auto]">
+          <div>
+            <div className="text-xl font-black uppercase leading-none text-white sm:text-2xl">
+              {project.title}
+            </div>
+            <p className="mt-2 max-w-xl leading-6 text-[#f4f1ea]/62">
+              {project.summary}
+            </p>
+          </div>
+          <div className="hidden flex-wrap gap-x-8 gap-y-3 text-[#f4f1ea]/72 lg:flex">
+            {heroSkills.map((skill) => (
+              <span key={skill}>{skill}</span>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
             <a
               href={project.href}
               className="glass-button glass-button-primary inline-flex h-11 items-center gap-2 px-4 text-xs font-bold uppercase tracking-[0.12em] transition hover:scale-[1.015]"
@@ -292,27 +403,164 @@ function ProjectRow({
             ) : null}
           </div>
         </div>
+      ) : (
+        <div className="grid gap-5 text-sm font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1.2fr_1.4fr_1fr] lg:grid-cols-[0.7fr_1.45fr_2fr_0.8fr_1.15fr] lg:items-center">
+          <div className="flex items-center gap-3">
+            <div className="glass-button flex size-14 shrink-0 items-center justify-center font-mono text-lg font-black leading-none text-white">
+              JQ
+            </div>
+            <div>
+              <div className="text-white">Juan Quenga</div>
+              <div className="text-[#f4f1ea]/58">Product interfaces</div>
+            </div>
+          </div>
 
+          <p className="max-w-md leading-6 text-[#f4f1ea]/62">
+            I build React products for stores, local businesses, and internal
+            teams.
+          </p>
+
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-[#f4f1ea]/72">
+            {heroSkills.map((skill) => (
+              <span key={skill}>{skill}</span>
+            ))}
+          </div>
+
+          <a
+            href="https://github.com/JuanQuenga"
+            className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+            aria-label="Juan Quenga GitHub"
+          >
+            <Github className="size-5" />
+          </a>
+
+          <div className="flex items-center gap-2 text-[#f4f1ea]/72">
+            <MapPin className="size-4 text-[#d7ff63]" />
+            Southeast Michigan
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function GlitchTitle({ lines }: { lines: string[] }) {
+  return (
+    <h1
+      className="hero-name hero-title font-black uppercase leading-[0.82] tracking-normal text-[#f4f1ea]"
+      aria-label={lines.join(" ")}
+    >
+      <span aria-hidden="true">
+        {lines.map((line, lineIndex) => (
+          <span className="block" key={line}>
+            {[...line].map((letter, letterIndex) => {
+              const characterIndex = lineIndex * 7 + letterIndex;
+
+              return (
+                <span
+                  className="glitch-letter"
+                  data-letter={letter}
+                  key={`${line}-${letter}-${letterIndex}`}
+                  style={
+                    {
+                      "--glitch-delay": `${characterIndex * -0.17}s`,
+                      "--glitch-x-sm":
+                        letterIndex % 2 === 0 ? "0.025em" : "-0.025em",
+                      "--glitch-x-sm-neg":
+                        letterIndex % 2 === 0 ? "-0.018em" : "0.018em",
+                      "--glitch-cyan-idle":
+                        letterIndex % 2 === 0 ? "0.035em" : "-0.035em",
+                      "--glitch-cyan-far":
+                        letterIndex % 2 === 0 ? "0.11em" : "-0.11em",
+                      "--glitch-cyan-mid":
+                        letterIndex % 2 === 0 ? "-0.06em" : "0.06em",
+                      "--glitch-cyan-low":
+                        letterIndex % 2 === 0 ? "0.09em" : "-0.09em",
+                      "--glitch-magenta-idle":
+                        letterIndex % 2 === 0 ? "-0.03em" : "0.03em",
+                      "--glitch-magenta-far":
+                        letterIndex % 2 === 0 ? "-0.1em" : "0.1em",
+                      "--glitch-magenta-mid":
+                        letterIndex % 2 === 0 ? "0.055em" : "-0.055em",
+                      "--glitch-magenta-low":
+                        letterIndex % 2 === 0 ? "-0.08em" : "0.08em",
+                    } as CSSProperties
+                  }
+                >
+                  {letter}
+                </span>
+              );
+            })}
+          </span>
+        ))}
+      </span>
+    </h1>
+  );
+}
+
+function Work() {
+  return (
+    <>
+      <section
+        id="work"
+        data-glass-context="work"
+        className="relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
+      >
+        <Reveal className="mx-auto grid w-full max-w-7xl content-end gap-6 border-b border-[#f4f1ea]/12 pb-36 lg:grid-cols-[0.78fr_1fr] lg:items-end">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
+            Selected Work
+          </p>
+          <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
+            Recent builds.
+          </h2>
+        </Reveal>
+      </section>
+
+      {projects.map((project, index) => (
+        <ProjectScreen key={project.title} index={index} project={project} />
+      ))}
+    </>
+  );
+}
+
+function ProjectScreen({
+  index,
+  project,
+}: {
+  index: number;
+  project: (typeof projects)[number];
+}) {
+  return (
+    <section
+      data-glass-context="project"
+      data-project-index={index}
+      className="project-screen relative flex h-[100svh] items-center px-4 py-10 sm:px-6"
+    >
+      <Reveal className="mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
         <a
           href={project.href}
-          className="glass-frame group block p-2"
+          className="glass-frame project-shot group block"
           aria-label={`Open ${project.title}`}
         >
-            <img
-              src={project.screenshotSrc}
-              alt={`${project.title} screenshot`}
-              loading="lazy"
-              className="glass-refract aspect-[16/9] w-full object-cover object-top opacity-90 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
-            />
+          <img
+            src={project.screenshotSrc}
+            alt={`${project.title} screenshot`}
+            loading={index === 0 ? "eager" : "lazy"}
+            className="glass-refract aspect-[16/9] w-full object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
+          />
         </a>
-      </article>
-    </Reveal>
+      </Reveal>
+    </section>
   );
 }
 
 function Practice() {
   return (
-    <section id="practice" className="relative px-4 py-16 sm:px-6 lg:py-24">
+    <section
+      id="practice"
+      data-glass-context="practice"
+      className="relative px-4 py-16 sm:px-6 lg:py-24"
+    >
       <div className="mx-auto max-w-7xl border-y border-[#f4f1ea]/12 py-12">
         <Reveal className="grid gap-8 lg:grid-cols-[0.44fr_0.56fr]">
           <div>
@@ -344,7 +592,11 @@ function Practice() {
 
 function Contact() {
   return (
-    <section id="contact" className="relative px-4 py-16 sm:px-6 lg:py-24">
+    <section
+      id="contact"
+      data-glass-context="contact"
+      className="relative px-4 py-16 sm:px-6 lg:py-24"
+    >
       <Reveal className="mx-auto grid max-w-7xl gap-8 border-t border-[#f4f1ea]/12 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
