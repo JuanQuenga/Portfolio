@@ -670,19 +670,26 @@
       0 0 0 1px rgba(244, 241, 234, 0.1),
       0 16px 44px rgba(0, 0, 0, 0.3);
     isolation: isolate;
+    contain: paint;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .project-glass-layer {
     position: absolute !important;
-    inset: 0;
+    inset: 1px;
     z-index: 0;
-    border-radius: inherit;
+    overflow: hidden;
+    border-radius: calc(var(--glass-radius) - 1px);
     corner-shape: inherit;
     pointer-events: none;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .project-glass-layer > [data-liquid-glass],
   .project-glass-layer > div:first-child {
+    overflow: hidden;
     border-radius: inherit;
     corner-shape: inherit;
   }

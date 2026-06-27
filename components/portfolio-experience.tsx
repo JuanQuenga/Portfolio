@@ -94,7 +94,7 @@ const heroGlassPreset = {
   specularAngle: 130,
   shape: "squircle" as const,
   squircleExponent: 3.9,
-  quality: 512,
+  quality: 2048,
 };
 
 type HeroGlassSettings = typeof heroGlassPreset;
@@ -136,7 +136,7 @@ const glassControls = [
     max: 8,
     step: 0.1,
   },
-  { key: "quality", label: "Quality", min: 128, max: 1024, step: 64 },
+  { key: "quality", label: "Quality", min: 128, max: 2048, step: 64 },
 ] satisfies Array<{
   key: keyof Omit<HeroGlassSettings, "shape">;
   label: string;
