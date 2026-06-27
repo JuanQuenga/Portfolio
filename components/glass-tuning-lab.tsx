@@ -1,73 +1,79 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 
-import { LiquidGlass } from "@/lib/liquid-glass-squircle";
+import {
+  LiquidGlassCard,
+  type LiquidGlassSettings,
+} from "@ogtirth/liquid-glass-oss";
 
 type GlassSettings = {
   width: number;
   height: number;
   radius: number;
-  strength: number;
+  refraction: number;
   chromaticAberration: number;
   blur: number;
   depth: number;
-  curvature: number;
-  splay: number;
-  glow: number;
-  glowSpread: number;
-  glowExponent: number;
+  distortion: number;
   edgeHighlight: number;
-  edgeWidth: number;
-  edgeExponent: number;
   specular: number;
-  specularAngle: number;
-  squircleExponent: number;
-  quality: number;
+  fresnel: number;
+  brightness: number;
+  saturation: number;
+  darkTint: number;
+  tintStrength: number;
+  opacity: number;
+  bevel: number;
+  liquidMotion: number;
+  liquidSpring: number;
+  liquidDamping: number;
 };
 
 const initialSettings: GlassSettings = {
   width: 620,
   height: 240,
   radius: 72,
-  strength: 0.08,
-  chromaticAberration: 0.28,
-  blur: 0,
-  depth: 30,
-  curvature: 0.78,
-  splay: 1,
-  glow: 0.22,
-  glowSpread: 1,
-  glowExponent: 1.5,
-  edgeHighlight: 0.34,
-  edgeWidth: 3,
-  edgeExponent: 1.5,
-  specular: 1,
-  specularAngle: 130,
-  squircleExponent: 4.7,
-  quality: 512,
+  refraction: 0.82,
+  chromaticAberration: 0.18,
+  blur: 0.06,
+  depth: 48,
+  distortion: 0.035,
+  edgeHighlight: 0.13,
+  specular: 0.08,
+  fresnel: 1.18,
+  brightness: 0.02,
+  saturation: 0.1,
+  darkTint: 0.12,
+  tintStrength: 0.14,
+  opacity: 1,
+  bevel: 0,
+  liquidMotion: 0.16,
+  liquidSpring: 0.06,
+  liquidDamping: 0.83,
 };
 
 const controls = [
   { key: "width", label: "Width", min: 180, max: 960, step: 1 },
   { key: "height", label: "Height", min: 90, max: 420, step: 1 },
   { key: "radius", label: "Radius", min: 16, max: 180, step: 1 },
-  { key: "squircleExponent", label: "Squircle", min: 2.2, max: 8, step: 0.1 },
-  { key: "strength", label: "Strength", min: 0, max: 0.18, step: 0.005 },
-  { key: "chromaticAberration", label: "Chroma", min: 0, max: 0.8, step: 0.01 },
-  { key: "blur", label: "Blur", min: 0, max: 12, step: 0.1 },
+  { key: "refraction", label: "Refraction", min: 0, max: 1.4, step: 0.01 },
+  { key: "chromaticAberration", label: "Chroma", min: 0, max: 0.28, step: 0.005 },
+  { key: "blur", label: "Blur", min: 0, max: 1.5, step: 0.01 },
   { key: "depth", label: "Depth", min: 4, max: 72, step: 1 },
-  { key: "curvature", label: "Curve", min: 0, max: 1, step: 0.01 },
-  { key: "splay", label: "Splay", min: 0, max: 1, step: 0.01 },
-  { key: "glow", label: "Glow", min: 0, max: 1, step: 0.01 },
-  { key: "glowSpread", label: "Glow spread", min: 0.05, max: 1, step: 0.01 },
-  { key: "glowExponent", label: "Glow exp", min: 0.25, max: 4, step: 0.05 },
-  { key: "edgeHighlight", label: "Edge", min: 0, max: 1, step: 0.01 },
-  { key: "edgeWidth", label: "Edge width", min: 0.5, max: 18, step: 0.5 },
-  { key: "edgeExponent", label: "Edge exp", min: 0.25, max: 4, step: 0.05 },
-  { key: "specular", label: "Specular", min: 0, max: 2, step: 0.01 },
-  { key: "specularAngle", label: "Light", min: 0, max: 360, step: 1 },
-  { key: "quality", label: "Quality", min: 128, max: 1024, step: 128 },
+  { key: "distortion", label: "Distortion", min: 0, max: 0.1, step: 0.001 },
+  { key: "edgeHighlight", label: "Edge", min: 0, max: 0.4, step: 0.005 },
+  { key: "specular", label: "Specular", min: 0, max: 0.5, step: 0.005 },
+  { key: "fresnel", label: "Fresnel", min: 0, max: 1.5, step: 0.01 },
+  { key: "brightness", label: "Brightness", min: -0.2, max: 0.2, step: 0.005 },
+  { key: "saturation", label: "Saturation", min: -0.5, max: 0.5, step: 0.01 },
+  { key: "darkTint", label: "Dark tint", min: 0, max: 0.5, step: 0.005 },
+  { key: "tintStrength", label: "Tint", min: 0, max: 0.5, step: 0.005 },
+  { key: "opacity", label: "Opacity", min: 0.2, max: 1, step: 0.01 },
+  { key: "bevel", label: "Bevel", min: 0, max: 1, step: 1 },
+  { key: "liquidMotion", label: "Motion", min: 0, max: 0.4, step: 0.005 },
+  { key: "liquidSpring", label: "Spring", min: 0.01, max: 0.12, step: 0.001 },
+  { key: "liquidDamping", label: "Damping", min: 0.6, max: 0.95, step: 0.005 },
 ] satisfies Array<{
   key: keyof GlassSettings;
   label: string;
@@ -83,6 +89,42 @@ const swatches = [
   "#ffffff",
   "#161616",
 ];
+
+const sceneBackgrounds = {
+  bands: svgDataUri(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+      <rect width="1600" height="900" fill="#050506"/>
+      <radialGradient id="a" cx="15%" cy="72%" r="38%"><stop stop-color="#4ee5ff" stop-opacity=".34"/><stop offset="1" stop-color="#050506" stop-opacity="0"/></radialGradient>
+      <radialGradient id="b" cx="86%" cy="24%" r="36%"><stop stop-color="#d7ff63" stop-opacity=".26"/><stop offset="1" stop-color="#050506" stop-opacity="0"/></radialGradient>
+      <radialGradient id="c" cx="68%" cy="82%" r="35%"><stop stop-color="#ff70c2" stop-opacity=".22"/><stop offset="1" stop-color="#050506" stop-opacity="0"/></radialGradient>
+      <rect width="1600" height="900" fill="url(#a)"/>
+      <rect width="1600" height="900" fill="url(#b)"/>
+      <rect width="1600" height="900" fill="url(#c)"/>
+      <rect x="-220" y="190" width="2040" height="112" fill="#d7ff63" opacity=".62" transform="rotate(-12 800 246)"/>
+      <rect x="-180" y="410" width="1960" height="82" fill="#4ee5ff" opacity=".54" transform="rotate(8 800 451)"/>
+      <rect x="-120" y="610" width="1840" height="96" fill="#ff70c2" opacity=".46" transform="rotate(-5 800 658)"/>
+      <circle cx="270" cy="235" r="78" fill="white" opacity=".8"/>
+      <circle cx="1340" cy="690" r="104" fill="#050506" stroke="white" stroke-opacity=".2" stroke-width="5"/>
+    </svg>
+  `),
+  image: "/screenshots/multi-auto.png",
+  text: svgDataUri(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+      <rect width="1600" height="900" fill="#050506"/>
+      <circle cx="260" cy="660" r="350" fill="#4ee5ff" opacity=".2"/>
+      <circle cx="1370" cy="210" r="330" fill="#d7ff63" opacity=".17"/>
+      <text x="110" y="305" fill="#d7ff63" font-family="Arial, sans-serif" font-size="24" font-weight="900" letter-spacing="8">REFRACTION SAMPLE</text>
+      <text x="105" y="535" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="180" font-weight="900">LIQUID</text>
+      <text x="105" y="700" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="180" font-weight="900">GLASS</text>
+      <line x1="0" y1="450" x2="1600" y2="450" stroke="white" stroke-opacity=".32"/>
+      <line x1="800" y1="0" x2="800" y2="900" stroke="white" stroke-opacity=".3"/>
+    </svg>
+  `),
+} satisfies Record<"bands" | "image" | "text", string>;
+
+function svgDataUri(svg: string) {
+  return `data:image/svg+xml,${encodeURIComponent(svg.replace(/\s+/g, " ").trim())}`;
+}
 
 function superellipsePoint(
   centerX: number,
@@ -145,10 +187,12 @@ function buildSquirclePath({
 }
 
 export default function GlassTuningLab() {
+  const stageRef = useRef<HTMLElement>(null);
   const [settings, setSettings] = useState<GlassSettings>(initialSettings);
   const [showOutline, setShowOutline] = useState(true);
   const [scene, setScene] = useState<"bands" | "image" | "text">("bands");
   const [lensPosition, setLensPosition] = useState({ x: 0.5, y: 0.5 });
+  const backgroundImage = sceneBackgrounds[scene];
 
   const outlineStyle = useMemo(
     () =>
@@ -168,9 +212,38 @@ export default function GlassTuningLab() {
         width: settings.width,
         height: settings.height,
         radius: settings.radius,
-        exponent: settings.squircleExponent,
+        exponent: 4.7,
       }),
-    [settings.height, settings.radius, settings.squircleExponent, settings.width],
+    [settings.height, settings.radius, settings.width],
+  );
+
+  const glassMaterial = useMemo(
+    () =>
+      ({
+        radius: settings.radius,
+        blur: settings.blur,
+        refraction: settings.refraction,
+        chromaticAberration: settings.chromaticAberration,
+        distortion: settings.distortion,
+        edgeHighlight: settings.edgeHighlight,
+        specular: settings.specular,
+        fresnel: settings.fresnel,
+        depth: settings.depth,
+        brightness: settings.brightness,
+        saturation: settings.saturation,
+        darkTint: settings.darkTint,
+        tintStrength: settings.tintStrength,
+        tintColor: [0.92, 0.95, 1.05],
+        tint: 0,
+        opacity: settings.opacity,
+        bevel: settings.bevel,
+        lensWidth: Math.max(1, settings.width - 4),
+        lensHeight: Math.max(1, settings.height - 4),
+        liquidMotion: settings.liquidMotion,
+        liquidSpring: settings.liquidSpring,
+        liquidDamping: settings.liquidDamping,
+      }) satisfies Partial<LiquidGlassSettings>,
+    [settings],
   );
 
   const updateSetting = (key: keyof GlassSettings, value: number) => {
@@ -184,40 +257,47 @@ export default function GlassTuningLab() {
     setShowOutline(true);
   };
 
+  const updateLensFromPointer = (clientX: number, clientY: number) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setLensPosition({
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+    });
+  };
+
   return (
     <main className="h-screen overflow-hidden bg-[#050506] text-[#f4f1ea]">
       <div className="grid h-full lg:grid-cols-[minmax(0,1fr)_390px]">
-        <section className="glass-lab-stage relative h-full min-h-0 overflow-hidden">
-          <LiquidGlass
-            x={lensPosition.x}
-            y={lensPosition.y}
-            width={settings.width}
-            height={settings.height}
-            radius={settings.radius}
-            strength={settings.strength}
-            chromaticAberration={settings.chromaticAberration}
-            blur={settings.blur}
-            depth={settings.depth}
-            curvature={settings.curvature}
-            splay={settings.splay}
-            glow={settings.glow}
-            glowSpread={settings.glowSpread}
-            glowExponent={settings.glowExponent}
-            edgeHighlight={settings.edgeHighlight}
-            edgeWidth={settings.edgeWidth}
-            edgeExponent={settings.edgeExponent}
-            specular={settings.specular}
-            specularAngle={settings.specularAngle}
-            shape="squircle"
-            squircleExponent={settings.squircleExponent}
-            quality={settings.quality}
-            draggable
-            shadow={false}
-            onMove={(x, y) => setLensPosition({ x, y })}
-            className="glass-lab-surface h-full min-h-0 w-full"
+        <section
+          ref={stageRef}
+          className="glass-lab-stage relative h-full min-h-0 overflow-hidden"
+          data-liquid-glass-background
+          style={{ backgroundImage: `url("${backgroundImage}")` }}
+        >
+          <LabScene scene={scene} backgroundImage={backgroundImage} />
+
+          <div
+            className="absolute z-10 touch-none"
+            style={outlineStyle}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              updateLensFromPointer(event.clientX, event.clientY);
+              event.preventDefault();
+            }}
+            onPointerMove={(event) => {
+              if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+              updateLensFromPointer(event.clientX, event.clientY);
+              event.preventDefault();
+            }}
           >
-            <LabScene scene={scene} />
-          </LiquidGlass>
+            <LiquidGlassCard
+              backgroundImage={backgroundImage}
+              variant="prism"
+              settings={glassMaterial}
+              className="glass-lab-surface h-full min-h-0 w-full"
+            />
+          </div>
 
           {showOutline ? (
             <svg
@@ -251,7 +331,7 @@ export default function GlassTuningLab() {
                 Glass Lab
               </h1>
               <p className="mt-2 text-sm leading-6 text-white/54">
-                Tune the forked squircle refraction map.
+                Tune the liquidglass-oss WebGL material.
               </p>
             </div>
             <a
@@ -320,12 +400,18 @@ export default function GlassTuningLab() {
   );
 }
 
-function LabScene({ scene }: { scene: "bands" | "image" | "text" }) {
+function LabScene({
+  scene,
+  backgroundImage,
+}: {
+  scene: "bands" | "image" | "text";
+  backgroundImage: string;
+}) {
   if (scene === "image") {
     return (
       <div className="glass-lab-scene relative h-full min-h-0 overflow-hidden">
         <img
-          src="/screenshots/multi-auto.png"
+          src={backgroundImage}
           alt=""
           className="absolute inset-0 size-full object-cover opacity-92"
         />
@@ -337,7 +423,10 @@ function LabScene({ scene }: { scene: "bands" | "image" | "text" }) {
 
   if (scene === "text") {
     return (
-      <div className="glass-lab-scene relative flex h-full min-h-0 items-center overflow-hidden px-10">
+      <div
+        className="glass-lab-scene relative flex h-full min-h-0 items-center overflow-hidden bg-cover bg-center px-10"
+        style={{ backgroundImage: `url("${backgroundImage}")` }}
+      >
         <div className="max-w-[1200px]">
           <p className="mb-6 text-sm font-black uppercase tracking-[0.2em] text-[#d7ff63]">
             Refraction sample
@@ -354,13 +443,10 @@ function LabScene({ scene }: { scene: "bands" | "image" | "text" }) {
   }
 
   return (
-    <div className="glass-lab-scene relative h-full min-h-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_72%,rgba(78,229,255,0.32),transparent_28%),radial-gradient(circle_at_86%_24%,rgba(215,255,99,0.24),transparent_27%),radial-gradient(circle_at_68%_82%,rgba(255,112,194,0.2),transparent_29%),#050506]" />
-      <div className="absolute -left-[20%] top-[16%] h-28 w-[150%] rotate-[-12deg] bg-[#d7ff63]/62 blur-[2px]" />
-      <div className="absolute -left-[18%] top-[45%] h-20 w-[140%] rotate-[8deg] bg-[#4ee5ff]/54 blur-[2px]" />
-      <div className="absolute -left-[12%] top-[68%] h-24 w-[130%] rotate-[-5deg] bg-[#ff70c2]/46 blur-[2px]" />
-      <div className="absolute left-[12%] top-[18%] h-40 w-40 rounded-full bg-white/80" />
-      <div className="absolute right-[14%] bottom-[16%] h-52 w-52 rounded-full bg-black/80 ring-2 ring-white/20" />
+    <div
+      className="glass-lab-scene relative h-full min-h-0 overflow-hidden bg-cover bg-center"
+      style={{ backgroundImage: `url("${backgroundImage}")` }}
+    >
       <SceneMarkers />
     </div>
   );

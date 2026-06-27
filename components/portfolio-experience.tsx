@@ -23,7 +23,6 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { LiquidGlass } from "@/lib/liquid-glass-squircle";
 import { motion } from "motion/react";
 import { Slider } from "@/components/ui/slider";
 
@@ -73,6 +72,21 @@ const projects = [
 ];
 
 const heroSkills = ["React", "Next", "TanStack", "Convex"];
+
+const workFocus = [
+  {
+    label: "Systems",
+    copy: "Type-safe frontends wired to real product data.",
+  },
+  {
+    label: "Tools",
+    copy: "React, TanStack, Tailwind, Convex, and modern app primitives.",
+  },
+  {
+    label: "AI workflow",
+    copy: "Cursor, Codex, agentic coding, and LLMs in dev environments.",
+  },
+];
 const heroNameLines = ["Juan", "Quenga"];
 const heroGlassPreset = {
   width: 1600,
@@ -94,7 +108,7 @@ const heroGlassPreset = {
   specularAngle: 130,
   shape: "squircle" as const,
   squircleExponent: 3.9,
-  quality: 2048,
+  quality: 512,
 };
 
 type HeroGlassSettings = typeof heroGlassPreset;
@@ -111,13 +125,9 @@ const glassControls = [
     max: 1,
     step: 0.01,
   },
-  { key: "blur", label: "Blur", min: 0, max: 6, step: 0.1 },
   { key: "depth", label: "Depth", min: 0, max: 80, step: 1 },
   { key: "curvature", label: "Curvature", min: 0, max: 1, step: 0.01 },
-  { key: "splay", label: "Splay", min: -1, max: 1, step: 0.01 },
   { key: "glow", label: "Glow", min: 0, max: 1, step: 0.01 },
-  { key: "glowSpread", label: "Glow Spread", min: 0.1, max: 4, step: 0.05 },
-  { key: "glowExponent", label: "Glow Exp", min: 0.2, max: 4, step: 0.05 },
   {
     key: "edgeHighlight",
     label: "Edge",
@@ -126,7 +136,6 @@ const glassControls = [
     step: 0.01,
   },
   { key: "edgeWidth", label: "Edge Width", min: 0, max: 10, step: 0.1 },
-  { key: "edgeExponent", label: "Edge Exp", min: 0.2, max: 5, step: 0.05 },
   { key: "specular", label: "Specular", min: 0, max: 1, step: 0.01 },
   { key: "specularAngle", label: "Light", min: 0, max: 360, step: 1 },
   {
@@ -136,7 +145,6 @@ const glassControls = [
     max: 8,
     step: 0.1,
   },
-  { key: "quality", label: "Quality", min: 128, max: 2048, step: 64 },
 ] satisfies Array<{
   key: keyof Omit<HeroGlassSettings, "shape">;
   label: string;
@@ -212,11 +220,6 @@ export default function PortfolioExperience() {
         settings={glassSettings}
         renderedHeight={renderedGlassHeight}
         isCompactViewport={isCompactViewport}
-        refractionTarget={
-          <GlassRefractionStage
-            activeScreen={activeScreen}
-          />
-        }
       />
       <GlassControlPopover
         open={showGlassControls}
@@ -386,9 +389,11 @@ const screenInputLockMs = 240;
 const residualWheelQuietMs = 120;
 const residualWheelBreakoutDelta = 110;
 const residualWheelGrowthFactor = 1.35;
-const wheelPreviewThreshold = 56;
-const wheelCommitThreshold = 150;
-const wheelPreviewDamping = 0.42;
+const wheelPreviewThreshold = 6;
+const wheelCommitThreshold = 430;
+const wheelPreviewDamping = 0.86;
+const wheelPreviewLimitRatio = 0.72;
+const wheelRestMs = 180;
 
 function useVirtualScreens(
   screenCount: number,
@@ -416,7 +421,7 @@ function useVirtualScreens(
     let lastTouchY: number | undefined;
 
     const getBoundedOffset = (delta: number) => {
-      const limit = window.innerHeight * 0.28;
+      const limit = window.innerHeight * wheelPreviewLimitRatio;
       return Math.max(-limit, Math.min(limit, -delta * wheelPreviewDamping));
     };
 
@@ -562,7 +567,7 @@ function useVirtualScreens(
         if (wheelTimer) window.clearTimeout(wheelTimer);
         wheelTimer = window.setTimeout(() => {
           wheelTotal = 0;
-        }, 80);
+        }, wheelRestMs);
         return;
       }
 
@@ -582,7 +587,7 @@ function useVirtualScreens(
         setScreenTransition(screenTransition);
         setDragOffsetOnFrame(0);
         wheelTotal = 0;
-      }, 80);
+      }, wheelRestMs);
     };
 
     const handleTouchStart = (event: TouchEvent) => {
@@ -617,7 +622,7 @@ function useVirtualScreens(
       const endY = event.changedTouches[0]?.clientY ?? lastTouchY;
       if (endY === undefined) return;
       const delta = touchStartY - endY;
-      if (Math.abs(delta) >= 48) go(delta > 0 ? 1 : -1);
+      if (Math.abs(delta) >= window.innerHeight * 0.28) go(delta > 0 ? 1 : -1);
       else {
         setScreenTransition(screenTransition);
         setDragOffsetOnFrame(0);
@@ -812,55 +817,14 @@ function SharedGlassBar({
   settings,
   renderedHeight,
   isCompactViewport,
-  refractionTarget,
 }: {
   project: (typeof projects)[number] | null;
   settings: HeroGlassSettings;
   renderedHeight: number;
   isCompactViewport: boolean;
-  refractionTarget: ReactNode;
 }) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const glassRadius = isCompactViewport ? renderedHeight / 3 : settings.radius;
-
-  useLayoutEffect(() => {
-    const bar = barRef.current;
-    if (!bar) return;
-
-    let frame: number | undefined;
-
-    const updateRefractionFrame = () => {
-      if (frame !== undefined) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = undefined;
-        const rect = bar.getBoundingClientRect();
-        const overscan = Math.min(48, Math.max(24, window.innerHeight * 0.04));
-
-        bar.style.setProperty("--glass-preview-overscan", `${overscan}px`);
-        bar.style.setProperty("--glass-refraction-left", `${-rect.left}px`);
-        bar.style.setProperty(
-          "--glass-refraction-top",
-          `${overscan - rect.top}px`,
-        );
-        bar.style.setProperty(
-          "--glass-refraction-height",
-          `${window.innerHeight + overscan}px`,
-        );
-      });
-    };
-
-    updateRefractionFrame();
-
-    const resizeObserver = new ResizeObserver(updateRefractionFrame);
-    resizeObserver.observe(bar);
-    window.addEventListener("resize", updateRefractionFrame);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateRefractionFrame);
-      if (frame !== undefined) window.cancelAnimationFrame(frame);
-    };
-  }, [renderedHeight, settings.width]);
 
   return (
     <div
@@ -877,35 +841,22 @@ function SharedGlassBar({
         } as CSSProperties
       }
     >
-      <LiquidGlass
-        x={0.5}
-        y={0.5}
+      <ShaderGlassLayer
         width={settings.width}
         height={renderedHeight}
         radius={glassRadius}
         strength={settings.strength}
         chromaticAberration={settings.chromaticAberration}
-        blur={settings.blur}
         depth={settings.depth}
         curvature={settings.curvature}
-        splay={settings.splay}
         glow={settings.glow}
-        glowSpread={settings.glowSpread}
-        glowExponent={settings.glowExponent}
         edgeHighlight={settings.edgeHighlight}
         edgeWidth={settings.edgeWidth}
-        edgeExponent={settings.edgeExponent}
         specular={settings.specular}
         specularAngle={settings.specularAngle}
-        shape={settings.shape}
         squircleExponent={settings.squircleExponent}
-        quality={settings.quality}
-        shadow={false}
-        refractionTarget={refractionTarget}
         className="project-glass-layer"
-      >
-        <span aria-hidden="true" />
-      </LiquidGlass>
+      />
       {project ? (
         <div className="hero-glass-content project-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
           <div className="project-glass-text min-w-0">
@@ -968,56 +919,290 @@ function SharedGlassBar({
   );
 }
 
-function GlassRefractionStage({
-  activeScreen,
-}: {
-  activeScreen: number;
-}) {
-  const visibleScreens = [activeScreen - 1, activeScreen, activeScreen + 1].filter(
-    (screen) => screen >= 0 && screen < projects.length + 4,
-  );
+const shaderVertexSource = `
+  attribute vec2 aPosition;
+  varying vec2 vUv;
 
-  return (
-    <div className="glass-refraction-stage" aria-hidden="true">
-      {visibleScreens.map((screen) => (
-        <div
-          key={screen}
-          className="glass-refraction-panel absolute inset-0"
-          style={
-            {
-              "--screen-y": `calc(${(screen - activeScreen) * 100}svh + var(--drag-offset, 0px))`,
-            } as CSSProperties
-          }
-        >
-          <RefractionPanel screen={screen} />
-        </div>
-      ))}
-    </div>
-  );
-}
+  void main() {
+    vUv = aPosition * 0.5 + 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+  }
+`;
 
-function RefractionPanel({ screen }: { screen: number }) {
-  const project = screen >= 2 && screen < 2 + projects.length
-    ? projects[screen - 2]
-    : null;
+const shaderFragmentSource = `
+  precision mediump float;
 
-  if (project) {
-    return (
-      <div className="glass-refraction-project-screen">
-        <div className="glass-refraction-project-shot">
-          <img
-            src={project.screenshotSrc}
-            alt=""
-            loading="eager"
-            decoding="async"
-            className="h-full w-full object-cover object-top"
-          />
-        </div>
-      </div>
+  varying vec2 vUv;
+
+  uniform vec2 uResolution;
+  uniform float uRadius;
+  uniform float uStrength;
+  uniform float uChroma;
+  uniform float uDepth;
+  uniform float uCurvature;
+  uniform float uGlow;
+  uniform float uEdge;
+  uniform float uEdgeWidth;
+  uniform float uSpecular;
+  uniform float uSpecularAngle;
+  uniform float uSquircleExponent;
+
+  float roundedSquircleSdf(vec2 p, vec2 halfSize, float radius, float exponent) {
+    float r = min(radius, min(halfSize.x, halfSize.y));
+    vec2 q = abs(p) - (halfSize - vec2(r));
+    vec2 outside = max(q, 0.0);
+    float outsideDistance = pow(pow(outside.x, exponent) + pow(outside.y, exponent), 1.0 / exponent) - r;
+    float insideDistance = min(max(q.x, q.y), 0.0);
+    return outsideDistance + insideDistance;
+  }
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+      u.y
     );
   }
 
-  return <div className="h-full w-full" />;
+  vec3 backdrop(vec2 uv) {
+    vec2 p = uv - 0.5;
+    float cyan = exp(-dot(p - vec2(-0.36, -0.18), p - vec2(-0.36, -0.18)) * 6.0);
+    float lime = exp(-dot(p - vec2(0.38, 0.18), p - vec2(0.38, 0.18)) * 4.4);
+    float rose = exp(-dot(p - vec2(0.08, -0.46), p - vec2(0.08, -0.46)) * 7.5);
+    vec3 color = vec3(0.014, 0.017, 0.02);
+    color += vec3(0.035, 0.22, 0.24) * cyan;
+    color += vec3(0.22, 0.25, 0.065) * lime;
+    color += vec3(0.22, 0.055, 0.14) * rose;
+    color += vec3(0.045) * noise(uv * vec2(18.0, 5.0));
+    return color;
+  }
+
+  void main() {
+    vec2 px = vUv * uResolution;
+    vec2 halfSize = uResolution * 0.5;
+    vec2 p = px - halfSize;
+    float sdf = roundedSquircleSdf(p, halfSize - vec2(1.0), uRadius, uSquircleExponent);
+    float mask = 1.0 - smoothstep(-1.0, 1.0, sdf);
+
+    vec2 normalized = p / max(halfSize, vec2(1.0));
+    float dome = pow(max(0.0, 1.0 - dot(normalized, normalized) * 0.36), 1.3);
+    vec2 bend = normalized * dome * uStrength * (82.0 + uDepth * 1.6) * uCurvature / max(uResolution, vec2(1.0));
+
+    vec3 refracted;
+    refracted.r = backdrop(vUv + bend * (1.0 + uChroma * 0.85)).r;
+    refracted.g = backdrop(vUv + bend * (1.0 + uChroma * 0.25)).g;
+    refracted.b = backdrop(vUv + bend).b;
+
+    float edge = 1.0 - smoothstep(0.0, max(1.0, uEdgeWidth * 3.4), -sdf);
+    float inner = 1.0 - smoothstep(0.0, 28.0 + uDepth * 0.55, -sdf);
+    float ring = smoothstep(0.08, 0.86, edge) * smoothstep(1.0, 0.18, inner);
+    float innerRing = smoothstep(0.08, 0.82, inner) * (1.0 - smoothstep(0.82, 1.0, inner));
+
+    float angle = radians(uSpecularAngle);
+    vec2 lightDir = normalize(vec2(cos(angle), sin(angle)));
+    float sweep = pow(max(0.0, dot(normalize(normalized + 0.0001), lightDir)), 10.0);
+    float topLight = smoothstep(0.98, 0.08, vUv.y) * 0.34;
+    float bottomShade = smoothstep(0.46, 1.0, vUv.y) * 0.14;
+
+    vec3 color = refracted;
+    color = mix(color, vec3(0.004, 0.006, 0.008), 0.34);
+    color += vec3(0.86, 0.95, 0.78) * ring * uEdge * 0.55;
+    color += vec3(0.5, 0.78, 0.86) * innerRing * uEdge * 0.18;
+    color += vec3(1.0, 0.98, 0.88) * sweep * uSpecular * 0.24;
+    color += vec3(0.72, 0.98, 1.0) * uGlow * topLight;
+    color -= vec3(bottomShade);
+
+    gl_FragColor = vec4(color, mask);
+  }
+`;
+
+function ShaderGlassLayer({
+  className,
+  width,
+  height,
+  radius,
+  strength,
+  chromaticAberration,
+  depth,
+  curvature,
+  glow,
+  edgeHighlight,
+  edgeWidth,
+  specular,
+  specularAngle,
+  squircleExponent,
+}: {
+  className?: string;
+  width: number;
+  height: number;
+  radius: number;
+  strength: number;
+  chromaticAberration: number;
+  depth: number;
+  curvature: number;
+  glow: number;
+  edgeHighlight: number;
+  edgeWidth: number;
+  specular: number;
+  specularAngle: number;
+  squircleExponent: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const gl = canvas.getContext("webgl", {
+      alpha: true,
+      antialias: true,
+      depth: false,
+      powerPreference: "high-performance",
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: false,
+      stencil: false,
+    });
+
+    if (!gl) return;
+
+    const compileShader = (type: number, source: string) => {
+      const shader = gl.createShader(type);
+      if (!shader) return null;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        gl.deleteShader(shader);
+        return null;
+      }
+
+      return shader;
+    };
+
+    const vertexShader = compileShader(gl.VERTEX_SHADER, shaderVertexSource);
+    const fragmentShader = compileShader(gl.FRAGMENT_SHADER, shaderFragmentSource);
+    const program = gl.createProgram();
+
+    if (!vertexShader || !fragmentShader || !program) return;
+
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      gl.deleteProgram(program);
+      return;
+    }
+
+    const buffer = gl.createBuffer();
+    const positionLocation = gl.getAttribLocation(program, "aPosition");
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "uResolution"),
+      radius: gl.getUniformLocation(program, "uRadius"),
+      strength: gl.getUniformLocation(program, "uStrength"),
+      chroma: gl.getUniformLocation(program, "uChroma"),
+      depth: gl.getUniformLocation(program, "uDepth"),
+      curvature: gl.getUniformLocation(program, "uCurvature"),
+      glow: gl.getUniformLocation(program, "uGlow"),
+      edge: gl.getUniformLocation(program, "uEdge"),
+      edgeWidth: gl.getUniformLocation(program, "uEdgeWidth"),
+      specular: gl.getUniformLocation(program, "uSpecular"),
+      specularAngle: gl.getUniformLocation(program, "uSpecularAngle"),
+      squircleExponent: gl.getUniformLocation(program, "uSquircleExponent"),
+    };
+
+    if (!buffer || positionLocation < 0) return;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+      gl.STATIC_DRAW,
+    );
+
+    let frame: number | undefined;
+
+    const render = () => {
+      frame = undefined;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const canvasWidth = Math.max(1, Math.round(rect.width * dpr));
+      const canvasHeight = Math.max(1, Math.round(rect.height * dpr));
+
+      if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+      }
+
+      gl.viewport(0, 0, canvasWidth, canvasHeight);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(program);
+      gl.enableVertexAttribArray(positionLocation);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+      gl.uniform2f(uniforms.resolution, canvasWidth, canvasHeight);
+      gl.uniform1f(uniforms.radius, radius * dpr);
+      gl.uniform1f(uniforms.strength, strength);
+      gl.uniform1f(uniforms.chroma, chromaticAberration);
+      gl.uniform1f(uniforms.depth, depth);
+      gl.uniform1f(uniforms.curvature, curvature);
+      gl.uniform1f(uniforms.glow, glow);
+      gl.uniform1f(uniforms.edge, edgeHighlight);
+      gl.uniform1f(uniforms.edgeWidth, edgeWidth * dpr);
+      gl.uniform1f(uniforms.specular, specular);
+      gl.uniform1f(uniforms.specularAngle, specularAngle);
+      gl.uniform1f(uniforms.squircleExponent, squircleExponent);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+
+    const queueRender = () => {
+      if (frame !== undefined) return;
+      frame = window.requestAnimationFrame(render);
+    };
+
+    const resizeObserver = new ResizeObserver(queueRender);
+    resizeObserver.observe(canvas);
+    queueRender();
+
+    return () => {
+      resizeObserver.disconnect();
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vertexShader);
+      gl.deleteShader(fragmentShader);
+    };
+  }, [
+    chromaticAberration,
+    curvature,
+    depth,
+    edgeHighlight,
+    edgeWidth,
+    glow,
+    height,
+    radius,
+    specular,
+    specularAngle,
+    squircleExponent,
+    strength,
+    width,
+  ]);
+
+  return (
+    <div className={className} aria-hidden="true">
+      <canvas ref={canvasRef} className="shader-glass-canvas" />
+    </div>
+  );
 }
 
 function GlassControlPopover({
@@ -1190,13 +1375,37 @@ function WorkIntro({
       data-glass-context={mirror ? undefined : "work"}
       className="relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
     >
-      <Reveal className="mx-auto grid w-full max-w-7xl content-end gap-6 border-b border-[#f4f1ea]/12 pb-36 lg:grid-cols-[0.78fr_1fr] lg:items-end">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
-          Selected Work
-        </p>
-        <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
-          Recent builds.
-        </h2>
+      <Reveal className="mx-auto grid w-full max-w-7xl content-center gap-10 border-b border-[#f4f1ea]/12 pb-32 pt-28 lg:grid-cols-[0.72fr_1fr] lg:items-center lg:pb-36 lg:pt-24">
+        <div className="max-w-lg">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]/48">
+            Selected Work
+          </p>
+          <div className="mt-8 grid gap-5 sm:max-w-xl lg:mt-12">
+            {workFocus.map((item) => (
+              <div
+                key={item.label}
+                className="grid gap-3 border-t border-[#f4f1ea]/12 pt-5 sm:grid-cols-[7rem_1fr]"
+              >
+                <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-[#d7ff63]/78">
+                  {item.label}
+                </div>
+                <p className="max-w-md text-sm font-semibold leading-6 text-[#f4f1ea]/56">
+                  {item.copy}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="max-w-4xl">
+          <h2 className="text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
+            Recent builds.
+          </h2>
+          <p className="mt-6 max-w-2xl text-base font-semibold leading-7 text-[#f4f1ea]/58 sm:text-lg sm:leading-8">
+            Full-stack React interfaces with type-safe data flows, modern
+            tools like TanStack and Tailwind, and AI-aware workflows built
+            around Cursor, Codex, and agentic development.
+          </p>
+        </div>
       </Reveal>
     </section>
   );
