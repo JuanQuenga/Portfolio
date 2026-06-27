@@ -302,7 +302,9 @@ function useVirtualScreens(
     let wheelTotal = 0;
     let wheelTimer: number | undefined;
     let transitionTimer: number | undefined;
+    let residualWheelTimer: number | undefined;
     let isTransitioning = false;
+    let isAbsorbingResidualWheel = false;
     let touchStartY: number | undefined;
     let lastTouchY: number | undefined;
 
@@ -336,6 +338,18 @@ function useVirtualScreens(
       stageRef.current?.style.setProperty("--drag-offset", `${offset}px`);
     };
 
+    const releaseResidualWheel = () => {
+      if (isTransitioning) return;
+      isAbsorbingResidualWheel = false;
+      residualWheelTimer = undefined;
+      wheelTotal = 0;
+    };
+
+    const scheduleResidualWheelRelease = (delay: number) => {
+      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
+      residualWheelTimer = window.setTimeout(releaseResidualWheel, delay);
+    };
+
     const go = (direction: -1 | 1) => {
       if (isTransitioning) return;
       const nextScreen = Math.max(
@@ -351,6 +365,7 @@ function useVirtualScreens(
       }
 
       isTransitioning = true;
+      isAbsorbingResidualWheel = true;
       if (transitionTimer) window.clearTimeout(transitionTimer);
       setScreenTransition(screenTransition);
       flushSync(() => {
@@ -359,14 +374,21 @@ function useVirtualScreens(
       activeScreenRef.current = nextScreen;
       setDragOffsetNow(0);
       wheelTotal = 0;
+      scheduleResidualWheelRelease(500);
       transitionTimer = window.setTimeout(() => {
         isTransitioning = false;
-      }, 620);
+        scheduleResidualWheelRelease(90);
+      }, 420);
     };
 
     const handleWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
-      if (isTransitioning) return;
+      if (isTransitioning || isAbsorbingResidualWheel) {
+        wheelTotal = 0;
+        if (wheelTimer) window.clearTimeout(wheelTimer);
+        if (isAbsorbingResidualWheel) scheduleResidualWheelRelease(120);
+        return;
+      }
       setScreenTransition("none");
       wheelTotal += event.deltaY;
       setDragOffsetOnFrame(getBoundedOffset(wheelTotal));
@@ -431,6 +453,7 @@ function useVirtualScreens(
     return () => {
       if (wheelTimer) window.clearTimeout(wheelTimer);
       if (transitionTimer) window.clearTimeout(transitionTimer);
+      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
       if (dragOffsetFrame.current !== undefined) {
         window.cancelAnimationFrame(dragOffsetFrame.current);
       }
