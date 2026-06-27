@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -21,9 +22,8 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import {
-  LiquidGlass,
-} from "@/lib/liquid-glass-squircle";
+import Lenis from "lenis";
+import { LiquidGlass } from "@/lib/liquid-glass-squircle";
 import { motion, useScroll, useSpring, useTransform } from "motion/react";
 import { Slider } from "@/components/ui/slider";
 
@@ -167,15 +167,24 @@ export default function PortfolioExperience() {
   const [glassSettings, setGlassSettings] =
     useState<HeroGlassSettings>(heroGlassPreset);
   const [showGlassControls, setShowGlassControls] = useState(false);
+  const { activeProjectIndex, scrollY } = useLenisScrollDetents();
+  const activeProject = useMemo(
+    () =>
+      activeProjectIndex === null ? null : (projects[activeProjectIndex] ?? null),
+    [activeProjectIndex],
+  );
 
   return (
     <main className="relative min-h-screen isolate overflow-x-hidden bg-[#020203] text-[#f4f1ea]">
       <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
       <Header />
-      <PageContent
+      <PageContent />
+      <SharedGlassBar
+        project={activeProject}
         settings={glassSettings}
         onOpenControls={() => setShowGlassControls(true)}
+        refractionTarget={<GlassRefractionScene scrollY={scrollY} />}
       />
       <GlassControlPopover
         open={showGlassControls}
@@ -192,29 +201,146 @@ export default function PortfolioExperience() {
 
 function PageContent({
   mirror = false,
-  settings,
-  onOpenControls,
 }: {
   mirror?: boolean;
-  settings: HeroGlassSettings;
-  onOpenControls: () => void;
 }) {
   return (
     <div className="relative z-10">
-      <Hero
-        mirror={mirror}
-        settings={settings}
-        onOpenControls={onOpenControls}
-      />
-      <Work
-        mirror={mirror}
-        settings={settings}
-        onOpenControls={onOpenControls}
-      />
+      <Hero mirror={mirror} />
+      <Work mirror={mirror} />
       <Practice mirror={mirror} />
       <Contact mirror={mirror} />
     </div>
   );
+}
+
+function useLenisScrollDetents() {
+  const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(
+    null,
+  );
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    let releaseTimer: number | undefined;
+    let isSettling = false;
+    let direction: -1 | 1 = 1;
+
+    const getActiveProjectIndex = () => {
+      const viewportCenter = window.innerHeight / 2;
+      const projectSections = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-project-index]"),
+      );
+
+      for (const section of projectSections) {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
+          const value = section.dataset.projectIndex;
+          return value === undefined ? null : Number(value);
+        }
+      }
+
+      return null;
+    };
+
+    const getDetentTarget = () => {
+      const currentY = window.scrollY;
+      const screens = Array.from(
+        document.querySelectorAll<HTMLElement>("section[data-glass-context]"),
+      ).map((section) => section.getBoundingClientRect().top + currentY);
+
+      if (screens.length === 0) return currentY;
+
+      const previous =
+        [...screens].reverse().find((top) => top <= currentY + 2) ?? screens[0];
+      const next =
+        screens.find((top) => top > currentY + 2) ?? screens[screens.length - 1];
+
+      if (previous === undefined || next === undefined) return currentY;
+      if (previous === next) return previous;
+
+      const progress = (currentY - previous) / Math.max(1, next - previous);
+      const threshold = 0.34;
+
+      if (direction > 0) return progress >= threshold ? next : previous;
+      return progress <= 1 - threshold ? previous : next;
+    };
+
+    const updateActiveProject = () => {
+      const activeIndex = getActiveProjectIndex();
+      setActiveProjectIndex(Number.isFinite(activeIndex) ? activeIndex : null);
+      setScrollY(window.scrollY);
+    };
+
+    const lenis = new Lenis({
+      anchors: true,
+      autoRaf: true,
+      duration: 0.42,
+      easing: (t) => Math.min(1, 1.001 - 2 ** (-10 * t)),
+      smoothWheel: true,
+      syncTouch: false,
+      wheelMultiplier: 1,
+      prevent: (node) => node.closest("[data-scroll-native]") !== null,
+    });
+
+    lenis.on("scroll", updateActiveProject);
+
+    const settle = () => {
+      releaseTimer = undefined;
+      if (isSettling) return;
+      const target = getDetentTarget();
+      if (Math.abs(target - window.scrollY) < 2) return;
+
+      isSettling = true;
+      lenis.scrollTo(target, {
+        duration: 0.55,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
+        onComplete: () => {
+          isSettling = false;
+          updateActiveProject();
+        },
+      });
+    };
+
+    const scheduleSettle = (nextDirection: -1 | 1) => {
+      direction = nextDirection;
+      isSettling = false;
+      if (releaseTimer) window.clearTimeout(releaseTimer);
+      releaseTimer = window.setTimeout(settle, 70);
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
+      scheduleSettle(event.deltaY >= 0 ? 1 : -1);
+    };
+
+    const handleTouchStart = () => {
+      if (releaseTimer) window.clearTimeout(releaseTimer);
+      releaseTimer = undefined;
+      isSettling = false;
+    };
+
+    const handleTouchEnd = () => {
+      scheduleSettle(direction);
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    updateActiveProject();
+    lenis.resize();
+
+    return () => {
+      if (releaseTimer) window.clearTimeout(releaseTimer);
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+      lenis.off("scroll", updateActiveProject);
+      lenis.destroy();
+    };
+  }, []);
+
+  return { activeProjectIndex, scrollY };
 }
 
 function ParallaxBackdrop() {
@@ -305,12 +431,8 @@ function Header() {
 
 function Hero({
   mirror = false,
-  settings,
-  onOpenControls,
 }: {
   mirror?: boolean;
-  settings: HeroGlassSettings;
-  onOpenControls: () => void;
 }) {
   return (
     <section
@@ -342,11 +464,6 @@ function Hero({
           </Reveal>
         </div>
       </div>
-      <SharedGlassBar
-        project={null}
-        settings={settings}
-        onOpenControls={onOpenControls}
-      />
     </section>
   );
 }
@@ -355,10 +472,12 @@ function SharedGlassBar({
   project,
   settings,
   onOpenControls,
+  refractionTarget,
 }: {
   project: (typeof projects)[number] | null;
   settings: HeroGlassSettings;
   onOpenControls: () => void;
+  refractionTarget: ReactNode;
 }) {
   return (
     <div
@@ -368,11 +487,41 @@ function SharedGlassBar({
           "--hero-glass-width": `${settings.width}px`,
           "--glass-height": `${settings.height}px`,
           "--glass-radius": `${settings.radius}px`,
+          "--glass-bottom": "max(1rem, env(safe-area-inset-bottom))",
           height: `${settings.height}px`,
           minHeight: `${settings.height}px`,
         } as CSSProperties
       }
     >
+      <LiquidGlass
+        x={0.5}
+        y={0.5}
+        width={settings.width}
+        height={settings.height}
+        radius={settings.radius}
+        strength={settings.strength}
+        chromaticAberration={settings.chromaticAberration}
+        blur={settings.blur}
+        depth={settings.depth}
+        curvature={settings.curvature}
+        splay={settings.splay}
+        glow={settings.glow}
+        glowSpread={settings.glowSpread}
+        glowExponent={settings.glowExponent}
+        edgeHighlight={settings.edgeHighlight}
+        edgeWidth={settings.edgeWidth}
+        edgeExponent={settings.edgeExponent}
+        specular={settings.specular}
+        specularAngle={settings.specularAngle}
+        shape={settings.shape}
+        squircleExponent={settings.squircleExponent}
+        quality={settings.quality}
+        shadow={false}
+        refractionTarget={refractionTarget}
+        className="project-glass-layer"
+      >
+        <span aria-hidden="true" />
+      </LiquidGlass>
       {project ? (
         <div className="hero-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
           <div className="min-w-0">
@@ -465,6 +614,19 @@ function SharedGlassBar({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function GlassRefractionScene({ scrollY }: { scrollY: number }) {
+  return (
+    <div
+      className="glass-refraction-scene"
+      style={{ "--refraction-scroll-y": `${-scrollY}px` } as CSSProperties}
+      aria-hidden="true"
+    >
+      <ParallaxBackdrop />
+      <PageContent mirror />
     </div>
   );
 }
@@ -630,12 +792,8 @@ function GlitchTitle({ lines }: { lines: string[] }) {
 
 function Work({
   mirror = false,
-  settings,
-  onOpenControls,
 }: {
   mirror?: boolean;
-  settings: HeroGlassSettings;
-  onOpenControls: () => void;
 }) {
   return (
     <>
@@ -660,8 +818,6 @@ function Work({
           index={index}
           project={project}
           mirror={mirror}
-          settings={settings}
-          onOpenControls={onOpenControls}
         />
       ))}
     </>
@@ -672,14 +828,10 @@ function ProjectScreen({
   index,
   project,
   mirror = false,
-  settings,
-  onOpenControls,
 }: {
   index: number;
   project: (typeof projects)[number];
   mirror?: boolean;
-  settings: HeroGlassSettings;
-  onOpenControls: () => void;
 }) {
   return (
     <section
@@ -694,46 +846,14 @@ function ProjectScreen({
             className="group block"
             aria-label={`Open ${project.title}`}
           >
-            <LiquidGlass
-              x={0.5}
-              y={0.88}
-              width={Math.min(settings.width, 1480)}
-              height={settings.height}
-              radius={settings.radius}
-              strength={settings.strength}
-              chromaticAberration={settings.chromaticAberration}
-              blur={settings.blur}
-              depth={settings.depth}
-              curvature={settings.curvature}
-              splay={settings.splay}
-              glow={settings.glow}
-              glowSpread={settings.glowSpread}
-              glowExponent={settings.glowExponent}
-              edgeHighlight={settings.edgeHighlight}
-              edgeWidth={settings.edgeWidth}
-              edgeExponent={settings.edgeExponent}
-              specular={settings.specular}
-              specularAngle={settings.specularAngle}
-              shape={settings.shape}
-              squircleExponent={settings.squircleExponent}
-              quality={settings.quality}
-              shadow={false}
-              className="project-liquid-stage"
-            >
-              <img
-                src={project.screenshotSrc}
-                alt={`${project.title} screenshot`}
-                loading={mirror || index === 0 ? "eager" : "lazy"}
-                decoding={mirror ? "sync" : "async"}
-                className="glass-refract aspect-[16/9] w-full object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
-              />
-            </LiquidGlass>
+            <img
+              src={project.screenshotSrc}
+              alt={`${project.title} screenshot`}
+              loading={mirror || index === 0 ? "eager" : "lazy"}
+              decoding={mirror ? "sync" : "async"}
+              className="aspect-[16/9] w-full object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
+            />
           </a>
-          <SharedGlassBar
-            project={project}
-            settings={settings}
-            onOpenControls={onOpenControls}
-          />
         </div>
       </Reveal>
     </section>

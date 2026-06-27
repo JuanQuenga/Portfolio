@@ -566,11 +566,12 @@
   }
 
   .project-glass-bar {
-    position: absolute;
-    left: max(1rem, calc((100% - min(var(--hero-glass-width), calc(100% - 2rem))) / 2));
-    right: max(1rem, calc((100% - min(var(--hero-glass-width), calc(100% - 2rem))) / 2));
-    bottom: max(1rem, 3.2%);
-    z-index: 8;
+    position: fixed;
+    left: max(1rem, calc((100vw - var(--hero-glass-width)) / 2));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 35;
+    width: min(var(--hero-glass-width), calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
     overflow: hidden;
     border-radius: var(--glass-radius);
     corner-shape: squircle;
@@ -581,6 +582,36 @@
       inset 0 -1px 0 rgba(255, 255, 255, 0.08),
       0 0 0 1px rgba(244, 241, 234, 0.1),
       0 16px 44px rgba(0, 0, 0, 0.3);
+    isolation: isolate;
+  }
+
+  .project-glass-layer {
+    position: absolute !important;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    corner-shape: inherit;
+    pointer-events: none;
+  }
+
+  .project-glass-layer > [data-liquid-glass],
+  .project-glass-layer > div:first-child {
+    border-radius: inherit;
+    corner-shape: inherit;
+  }
+
+  .glass-refraction-scene {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    min-height: 100svh;
+    pointer-events: none;
+    transform: translate3d(0, var(--refraction-scroll-y), 0);
+  }
+
+  .project-glass-bar > :not(.project-glass-layer) {
+    position: relative;
+    z-index: 2;
   }
 
   .project-glass-bar a,
