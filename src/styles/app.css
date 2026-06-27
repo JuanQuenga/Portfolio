@@ -157,7 +157,7 @@
 
   .section-navigator {
     position: fixed;
-    left: clamp(0.65rem, 1.6vw, 1.4rem);
+    right: clamp(0.65rem, 1.6vw, 1.4rem);
     top: 50%;
     z-index: 45;
     transform: translateY(-50%);
@@ -167,7 +167,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.42rem;
-    align-items: flex-start;
+    align-items: flex-end;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -182,6 +182,7 @@
     background: transparent;
     padding: 0;
     cursor: pointer;
+    justify-content: flex-end;
   }
 
   .section-navigator-mark {
@@ -816,10 +817,53 @@
   }
 
   @media (max-width: 639px) {
+    .project-screen {
+      align-items: stretch;
+      padding: 0 1rem;
+    }
+
+    .project-screen-layout {
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: clamp(0.9rem, 2.6svh, 1.35rem);
+      padding-top: clamp(5.6rem, 13svh, 6.9rem);
+      padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 6.8rem);
+    }
+
+    .project-mobile-meta {
+      width: min(100%, 28rem);
+      align-self: center;
+    }
+
+    .project-shot {
+      width: min(100%, 38rem);
+      max-height: none;
+      align-self: center;
+      flex-shrink: 0;
+      --project-shot-radius: clamp(1.15rem, 6vw, 1.75rem);
+      --project-shot-padding: 0.22rem;
+    }
+
+    .project-shot img {
+      max-height: none;
+    }
+
+    .glass-refraction-project-screen {
+      align-items: center;
+      padding: clamp(5.6rem, 13svh, 6.9rem) 1rem calc(max(1rem, env(safe-area-inset-bottom)) + 6.8rem);
+    }
+
+    .glass-refraction-project-shot {
+      width: min(calc(100vw - 2rem), 38rem);
+      max-height: none;
+    }
+
     .section-navigator {
+      right: auto;
       left: 50%;
       top: auto;
-      bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--glass-height, 104px) + 0.9rem);
+      bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--glass-height, 104px) + 0.65rem);
       transform: translateX(-50%);
     }
 
@@ -850,6 +894,75 @@
     .section-navigator-button[aria-current="step"] .section-navigator-mark {
       width: 0.2rem;
       height: 2.35rem;
+    }
+
+    .project-glass-bar {
+      padding: 0.8rem 1rem;
+    }
+
+    .project-glass-bar .hero-glass-content {
+      align-content: center;
+      align-items: center;
+      gap: 0;
+      grid-template-columns: minmax(0, 1fr) !important;
+      grid-template-rows: auto;
+    }
+
+    .project-glass-bar .project-glass-content .project-glass-text {
+      display: none;
+    }
+
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child {
+      width: 100%;
+    }
+
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child > div {
+      font-size: clamp(2.2rem, 11vw, 3.4rem);
+      line-height: 0.92;
+    }
+
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child > p {
+      margin-top: 0.55rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: clamp(1rem, 4.8vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .project-glass-bar .project-glass-actions {
+      width: 100%;
+      justify-content: center;
+      align-self: center;
+      justify-self: stretch;
+    }
+
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:last-child {
+      width: 100%;
+      justify-content: flex-end;
+      align-self: end;
+      justify-self: stretch;
+    }
+
+    .project-glass-bar .mobile-glass-copy,
+    .project-glass-bar .mobile-glass-secondary {
+      display: none;
+    }
+
+    .project-glass-bar .glass-button-primary {
+      height: 3.35rem;
+      padding-inline: 1.55rem;
+      font-size: 0.74rem;
+    }
+
+    .project-glass-bar .project-glass-actions .glass-button:not(.glass-button-primary) {
+      width: 3.35rem;
+      height: 3.35rem;
+    }
+
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:last-child .glass-button:not(.glass-button-primary) {
+      width: 3.65rem;
+      height: 3.65rem;
     }
 
     .hero-glass {

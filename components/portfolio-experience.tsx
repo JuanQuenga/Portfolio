@@ -14,10 +14,7 @@ import { flushSync } from "react-dom";
 import {
   ArrowRight,
   ArrowUpRight,
-  Code2,
   Github,
-  Mail,
-  Menu,
   MapPin,
   MonitorCheck,
   PackageCheck,
@@ -171,6 +168,7 @@ export default function PortfolioExperience() {
     useState<HeroGlassSettings>(heroGlassPreset);
   const [showGlassControls, setShowGlassControls] = useState(false);
   const stageRef = useRef<HTMLElement | null>(null);
+  const isCompactViewport = useCompactViewport();
   const screenCount = projects.length + 4;
   const { activeScreen, goToScreen } = useVirtualScreens(screenCount, stageRef);
   const activeProjectIndex =
@@ -182,6 +180,11 @@ export default function PortfolioExperience() {
       activeProjectIndex === null ? null : (projects[activeProjectIndex] ?? null),
     [activeProjectIndex],
   );
+  const renderedGlassHeight = getRenderedGlassHeight(
+    glassSettings.height,
+    isCompactViewport,
+    activeProject !== null,
+  );
 
   return (
     <main
@@ -190,11 +193,14 @@ export default function PortfolioExperience() {
     >
       <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
-      <Header onNavigate={goToScreen} />
+      <Header
+        onNavigate={goToScreen}
+        onOpenControls={() => setShowGlassControls(true)}
+      />
       <SectionNavigator
         activeScreen={activeScreen}
         screenCount={screenCount}
-        glassHeight={glassSettings.height}
+        glassHeight={renderedGlassHeight}
         onNavigate={goToScreen}
       />
       <PageContent
@@ -204,7 +210,8 @@ export default function PortfolioExperience() {
       <SharedGlassBar
         project={activeProject}
         settings={glassSettings}
-        onOpenControls={() => setShowGlassControls(true)}
+        renderedHeight={renderedGlassHeight}
+        isCompactViewport={isCompactViewport}
         refractionTarget={
           <GlassRefractionStage
             activeScreen={activeScreen}
@@ -222,6 +229,34 @@ export default function PortfolioExperience() {
       />
     </main>
   );
+}
+
+function useCompactViewport() {
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+
+  useLayoutEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+
+    const updateViewport = () => {
+      setIsCompactViewport(media.matches);
+    };
+
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+
+    return () => media.removeEventListener("change", updateViewport);
+  }, []);
+
+  return isCompactViewport;
+}
+
+function getRenderedGlassHeight(
+  baseHeight: number,
+  isCompactViewport: boolean,
+  hasProject: boolean,
+) {
+  if (!isCompactViewport) return baseHeight;
+  return Math.round(baseHeight * (hasProject ? 0.96 : 1.12));
 }
 
 function getScreenLabel(screen: number) {
@@ -661,59 +696,25 @@ function ParallaxBackdrop() {
   );
 }
 
-function Header({ onNavigate }: { onNavigate: (screen: number) => void }) {
+function Header({
+  onNavigate,
+  onOpenControls,
+}: {
+  onNavigate: (screen: number) => void;
+  onOpenControls: () => void;
+}) {
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex items-start justify-between px-4 pt-4 sm:px-7 sm:pt-6">
-      <a
-        href="#top"
-        onClick={(event) => {
-          event.preventDefault();
-          onNavigate(0);
-        }}
-        className="glass-button inline-flex size-12 items-center justify-center text-[#f4f1ea]"
-        aria-label="Juan Quenga home"
-      >
-        <Code2 className="size-5" />
-      </a>
-      <div className="flex items-center gap-3">
-        <nav className="liquid-glass hidden h-12 items-center gap-7 px-6 text-xs font-semibold uppercase tracking-[0.16em] text-[#f4f1ea]/68 sm:flex">
-          <a
-            href="#work"
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate(1);
-            }}
-            className="transition hover:text-white"
-          >
-            Work
-          </a>
-          <a
-            href="#practice"
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate(projects.length + 2);
-            }}
-            className="transition hover:text-white"
-          >
-            Practice
-          </a>
-          <a
-            href="#contact"
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate(projects.length + 3);
-            }}
-            className="transition hover:text-white"
-          >
-            Contact
-          </a>
-        </nav>
+      <nav className="liquid-glass header-nav flex h-12 items-center gap-4 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#f4f1ea]/68 sm:gap-7 sm:px-6 sm:text-xs sm:tracking-[0.16em]">
         <a
-          href="mailto:juanquenga@gmail.com?subject=Let's work together"
-          className="glass-button hidden size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63] sm:inline-flex"
-          aria-label="Email Juan"
+          href="#top"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate(0);
+          }}
+          className="transition hover:text-white"
         >
-          <Mail className="size-4" />
+          Home
         </a>
         <a
           href="#work"
@@ -721,11 +722,37 @@ function Header({ onNavigate }: { onNavigate: (screen: number) => void }) {
             event.preventDefault();
             onNavigate(1);
           }}
-          className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-          aria-label="Open work section"
+          className="transition hover:text-white"
         >
-          <Menu className="size-5" />
+          Builds
         </a>
+        <a
+          href="#contact"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate(projects.length + 3);
+          }}
+          className="transition hover:text-white"
+        >
+          Contact
+        </a>
+      </nav>
+      <div className="flex items-center gap-3">
+        <a
+          href="https://github.com/JuanQuenga"
+          className="glass-button hidden size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63] sm:inline-flex"
+          aria-label="Juan Quenga GitHub"
+        >
+          <Github className="size-5" />
+        </a>
+        <button
+          type="button"
+          onClick={onOpenControls}
+          className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+          aria-label="Tune glass"
+        >
+          <SlidersHorizontal className="size-5" />
+        </button>
       </div>
     </header>
   );
@@ -747,14 +774,18 @@ function Hero({
       <div className="mx-auto flex w-full max-w-[1600px] items-end">
         <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(220px,0.28fr)] lg:items-end">
           <Reveal>
-            <Code2 className="mb-5 size-8 text-[#f4f1ea] sm:size-9" />
             <GlitchTitle lines={heroNameLines} />
-            <p
-              className="hero-kicker mt-4 max-w-[22rem] font-mono text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white sm:max-w-full"
-              data-text="Full Stack Product Engineer"
-            >
-              Full Stack Product Engineer
-            </p>
+            <div className="hero-kicker-wrap mt-5 w-fit max-w-[22rem] sm:max-w-full">
+              <p
+                className="hero-kicker font-mono text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white"
+                data-text="<Full Stack Product Engineer />"
+                aria-label="Full Stack Product Engineer"
+              >
+                <span className="text-[#d7ff63]">&lt;</span>
+                Full Stack Product Engineer
+                <span className="text-[#d7ff63]">/&gt;</span>
+              </p>
+            </div>
           </Reveal>
 
           <Reveal delay={0.08} className="hidden lg:block">
@@ -779,15 +810,18 @@ function Hero({
 function SharedGlassBar({
   project,
   settings,
-  onOpenControls,
+  renderedHeight,
+  isCompactViewport,
   refractionTarget,
 }: {
   project: (typeof projects)[number] | null;
   settings: HeroGlassSettings;
-  onOpenControls: () => void;
+  renderedHeight: number;
+  isCompactViewport: boolean;
   refractionTarget: ReactNode;
 }) {
   const barRef = useRef<HTMLDivElement | null>(null);
+  const glassRadius = isCompactViewport ? renderedHeight / 3 : settings.radius;
 
   useLayoutEffect(() => {
     const bar = barRef.current;
@@ -826,7 +860,7 @@ function SharedGlassBar({
       window.removeEventListener("resize", updateRefractionFrame);
       if (frame !== undefined) window.cancelAnimationFrame(frame);
     };
-  }, [settings.height, settings.width]);
+  }, [renderedHeight, settings.width]);
 
   return (
     <div
@@ -835,11 +869,11 @@ function SharedGlassBar({
       style={
         {
           "--hero-glass-width": `${settings.width}px`,
-          "--glass-height": `${settings.height}px`,
-          "--glass-radius": `${settings.radius}px`,
+          "--glass-height": `${renderedHeight}px`,
+          "--glass-radius": `${glassRadius}px`,
           "--glass-bottom": "max(1rem, env(safe-area-inset-bottom))",
-          height: `${settings.height}px`,
-          minHeight: `${settings.height}px`,
+          height: `${renderedHeight}px`,
+          minHeight: `${renderedHeight}px`,
         } as CSSProperties
       }
     >
@@ -847,8 +881,8 @@ function SharedGlassBar({
         x={0.5}
         y={0.5}
         width={settings.width}
-        height={settings.height}
-        radius={settings.radius}
+        height={renderedHeight}
+        radius={glassRadius}
         strength={settings.strength}
         chromaticAberration={settings.chromaticAberration}
         blur={settings.blur}
@@ -873,12 +907,12 @@ function SharedGlassBar({
         <span aria-hidden="true" />
       </LiquidGlass>
       {project ? (
-        <div className="hero-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
-          <div className="min-w-0">
-            <div className="truncate text-2xl font-black uppercase leading-none text-white">
+        <div className="hero-glass-content project-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
+          <div className="project-glass-text min-w-0">
+            <div className="project-glass-title truncate text-2xl font-black uppercase leading-none text-white">
               {project.title}
             </div>
-            <p className="mt-2 max-w-3xl truncate leading-6 text-[#f4f1ea]/62">
+            <p className="project-glass-summary mt-2 max-w-3xl truncate leading-6 text-[#f4f1ea]/62">
               {project.summary}
             </p>
           </div>
@@ -887,7 +921,7 @@ function SharedGlassBar({
               <span key={skill}>{skill}</span>
             ))}
           </div>
-          <div className="flex items-center gap-3 justify-self-end">
+          <div className="project-glass-actions flex items-center gap-3 justify-self-end">
             <a
               href={project.href}
               className="glass-button glass-button-primary inline-flex h-[3.25rem] items-center gap-2 px-5 text-xs font-bold uppercase tracking-[0.14em] transition hover:scale-[1.015]"
@@ -895,23 +929,6 @@ function SharedGlassBar({
               Open
               <ArrowUpRight className="size-4" />
             </a>
-            {project.githubHref ? (
-              <a
-                href={project.githubHref}
-                className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-                aria-label={`View ${project.title} on GitHub`}
-              >
-                <Github className="size-5" />
-              </a>
-            ) : null}
-            <button
-              type="button"
-              onClick={onOpenControls}
-              className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-              aria-label="Tune glass"
-            >
-              <SlidersHorizontal className="size-5" />
-            </button>
           </div>
         </div>
       ) : (
@@ -930,35 +947,18 @@ function SharedGlassBar({
             </div>
           </div>
 
-          <p className="min-w-0 max-w-none leading-7 text-[#f4f1ea]/62">
+          <p className="mobile-glass-copy min-w-0 max-w-none leading-7 text-[#f4f1ea]/62">
             I build React products for stores, local businesses, and internal
             teams.
           </p>
 
-          <div className="flex min-w-0 flex-wrap justify-center gap-x-9 gap-y-2 text-[#f4f1ea]/72">
+          <div className="mobile-glass-secondary flex min-w-0 flex-wrap justify-center gap-x-9 gap-y-2 text-[#f4f1ea]/72">
             {heroSkills.map((skill) => (
               <span key={skill}>{skill}</span>
             ))}
           </div>
 
-          <a
-            href="https://github.com/JuanQuenga"
-            className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-            aria-label="Juan Quenga GitHub"
-          >
-            <Github className="size-5" />
-          </a>
-
-          <button
-            type="button"
-            onClick={onOpenControls}
-            className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-            aria-label="Tune glass"
-          >
-            <SlidersHorizontal className="size-5" />
-          </button>
-
-          <div className="flex min-w-0 items-center justify-end gap-3 truncate text-[#f4f1ea]/72">
+          <div className="mobile-glass-secondary flex min-w-0 items-center justify-end gap-3 truncate text-[#f4f1ea]/72">
             <MapPin className="size-5 shrink-0 text-[#d7ff63]" />
             Southeast Michigan
           </div>
@@ -1217,7 +1217,19 @@ function ProjectScreen({
       data-project-index={mirror ? undefined : index}
       className="project-screen relative flex h-[100svh] items-center px-4 py-10 sm:px-6"
     >
-      <Reveal className="mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
+      <Reveal className="project-screen-layout mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
+        <div className="project-mobile-meta sm:hidden">
+          <div className="flex items-center justify-between gap-4 text-[0.68rem] font-black uppercase tracking-[0.18em] text-[#d7ff63]">
+            <span>Project {String(index + 1).padStart(2, "0")}</span>
+            <span>{heroSkills[0]}</span>
+          </div>
+          <h2 className="mt-3 text-[clamp(2rem,11vw,3.35rem)] font-black uppercase leading-[0.88] tracking-normal text-white">
+            {project.title}
+          </h2>
+          <p className="mt-3 max-w-[24rem] text-sm font-semibold leading-6 text-[#f4f1ea]/66">
+            {project.summary}
+          </p>
+        </div>
         <div className="glass-frame project-shot relative overflow-hidden">
           <a
             href={project.href}
