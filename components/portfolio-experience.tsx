@@ -193,7 +193,7 @@ function Hero() {
           </Reveal>
         </div>
 
-        <Reveal delay={0.12} className="liquid-glass p-4 sm:p-5">
+        <Reveal delay={0.12} className="liquid-glass hero-glass p-4 sm:p-5">
           <GlassRefractionLayer />
           <div className="grid gap-5 text-sm font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1.2fr_1.4fr_1fr] lg:grid-cols-[0.7fr_1.45fr_2fr_0.8fr_1.15fr] lg:items-center">
             <div className="flex items-center gap-3">

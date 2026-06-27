@@ -167,8 +167,8 @@
   }
 
   .liquid-glass {
-    --glass-height: 6rem;
-    --glass-inset: 8px;
+    --glass-height: 3rem;
+    --glass-inset: 4px;
     --glass-radius: calc(var(--glass-height) / 2);
     position: relative;
     box-sizing: border-box;
@@ -189,6 +189,11 @@
     -webkit-backdrop-filter: blur(8px) saturate(1.18);
   }
 
+  .hero-glass {
+    --glass-height: 6rem;
+    --glass-inset: 8px;
+  }
+
   .liquid-glass > * {
     position: relative;
     z-index: 2;
@@ -202,7 +207,7 @@
   }
 
   @media (max-width: 639px) {
-    .liquid-glass {
+    .hero-glass {
       --glass-height: 14rem;
       --glass-inset: 7px;
       height: auto;
