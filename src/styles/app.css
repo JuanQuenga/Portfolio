@@ -586,6 +586,10 @@
   }
 
   .project-glass-bar {
+    --glass-preview-overscan: 32px;
+    --glass-refraction-left: 0px;
+    --glass-refraction-top: 0px;
+    --glass-refraction-height: 100svh;
     position: fixed;
     left: max(1rem, calc((100vw - var(--hero-glass-width)) / 2));
     bottom: max(1rem, env(safe-area-inset-bottom));
@@ -622,10 +626,10 @@
 
   .glass-refraction-stage {
     position: absolute;
-    top: calc(-1 * (100svh - var(--glass-bottom, max(1rem, env(safe-area-inset-bottom))) - var(--glass-height)));
-    left: calc(-1 * max(1rem, calc((100vw - var(--hero-glass-width)) / 2)));
+    top: var(--glass-refraction-top);
+    left: var(--glass-refraction-left);
     width: 100vw;
-    height: 100svh;
+    height: var(--glass-refraction-height);
     overflow: hidden;
     pointer-events: none;
     contain: strict;

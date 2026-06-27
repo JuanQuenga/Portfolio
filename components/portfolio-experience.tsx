@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -284,6 +285,13 @@ function ScreenContent({
 }
 
 const screenTransition = "transform 580ms cubic-bezier(0.22, 1, 0.36, 1)";
+const screenInputLockMs = 240;
+const residualWheelQuietMs = 120;
+const residualWheelBreakoutDelta = 110;
+const residualWheelGrowthFactor = 1.35;
+const wheelPreviewThreshold = 56;
+const wheelCommitThreshold = 150;
+const wheelPreviewDamping = 0.42;
 
 function useVirtualScreens(
   screenCount: number,
@@ -305,12 +313,14 @@ function useVirtualScreens(
     let residualWheelTimer: number | undefined;
     let isTransitioning = false;
     let isAbsorbingResidualWheel = false;
+    let residualWheelDirection: -1 | 1 = 1;
+    let residualWheelMagnitude = 0;
     let touchStartY: number | undefined;
     let lastTouchY: number | undefined;
 
     const getBoundedOffset = (delta: number) => {
-      const limit = window.innerHeight * 0.42;
-      return Math.max(-limit, Math.min(limit, -delta));
+      const limit = window.innerHeight * 0.28;
+      return Math.max(-limit, Math.min(limit, -delta * wheelPreviewDamping));
     };
 
     const setDragOffsetOnFrame = (offset: number) => {
@@ -342,15 +352,32 @@ function useVirtualScreens(
       if (isTransitioning) return;
       isAbsorbingResidualWheel = false;
       residualWheelTimer = undefined;
+      residualWheelMagnitude = 0;
       wheelTotal = 0;
     };
 
-    const scheduleResidualWheelRelease = (delay: number) => {
-      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
-      residualWheelTimer = window.setTimeout(releaseResidualWheel, delay);
+    const resetWheelGesture = () => {
+      wheelTotal = 0;
+      isAbsorbingResidualWheel = false;
+      residualWheelMagnitude = 0;
+      if (wheelTimer) window.clearTimeout(wheelTimer);
+      if (residualWheelTimer) {
+        window.clearTimeout(residualWheelTimer);
+        residualWheelTimer = undefined;
+      }
+      setScreenTransition(screenTransition);
+      setDragOffsetNow(0);
     };
 
-    const go = (direction: -1 | 1) => {
+    const scheduleResidualWheelRelease = () => {
+      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
+      residualWheelTimer = window.setTimeout(
+        releaseResidualWheel,
+        residualWheelQuietMs,
+      );
+    };
+
+    const go = (direction: -1 | 1, triggerMagnitude = 0) => {
       if (isTransitioning) return;
       const nextScreen = Math.max(
         0,
@@ -358,14 +385,15 @@ function useVirtualScreens(
       );
 
       if (nextScreen === activeScreenRef.current) {
-        setScreenTransition(screenTransition);
-        setDragOffsetOnFrame(0);
-        wheelTotal = 0;
+        resetWheelGesture();
         return;
       }
 
       isTransitioning = true;
-      isAbsorbingResidualWheel = true;
+      isAbsorbingResidualWheel = false;
+      residualWheelDirection = direction;
+      residualWheelMagnitude = triggerMagnitude;
+      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
       if (transitionTimer) window.clearTimeout(transitionTimer);
       setScreenTransition(screenTransition);
       flushSync(() => {
@@ -374,27 +402,82 @@ function useVirtualScreens(
       activeScreenRef.current = nextScreen;
       setDragOffsetNow(0);
       wheelTotal = 0;
-      scheduleResidualWheelRelease(500);
       transitionTimer = window.setTimeout(() => {
         isTransitioning = false;
-        scheduleResidualWheelRelease(90);
-      }, 420);
+        isAbsorbingResidualWheel = true;
+        scheduleResidualWheelRelease();
+      }, screenInputLockMs);
     };
 
     const handleWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
+      const direction = event.deltaY > 0 ? 1 : -1;
+      const magnitude = Math.abs(event.deltaY);
+      const currentScreen = activeScreenRef.current;
+
+      if (
+        (currentScreen === 0 && direction < 0) ||
+        (currentScreen === screenCount - 1 && direction > 0)
+      ) {
+        resetWheelGesture();
+        return;
+      }
+
       if (isTransitioning || isAbsorbingResidualWheel) {
         wheelTotal = 0;
         if (wheelTimer) window.clearTimeout(wheelTimer);
-        if (isAbsorbingResidualWheel) scheduleResidualWheelRelease(120);
+        if (isAbsorbingResidualWheel) {
+          const isFreshSwipe =
+            direction === residualWheelDirection &&
+            magnitude >= residualWheelBreakoutDelta &&
+            magnitude >= residualWheelMagnitude * residualWheelGrowthFactor;
+
+          if (isFreshSwipe) {
+            releaseResidualWheel();
+          } else {
+            residualWheelDirection = direction;
+            residualWheelMagnitude = Math.max(magnitude, residualWheelMagnitude * 0.86);
+            scheduleResidualWheelRelease();
+            return;
+          }
+        } else {
+          residualWheelDirection = direction;
+          residualWheelMagnitude = Math.max(magnitude, residualWheelMagnitude);
+          return;
+        }
+      } else {
+        residualWheelMagnitude = magnitude;
+        residualWheelDirection = direction;
+      }
+
+      if (residualWheelTimer) {
+        window.clearTimeout(residualWheelTimer);
+        residualWheelTimer = undefined;
+      }
+
+      if (isTransitioning) {
         return;
       }
-      setScreenTransition("none");
+
       wheelTotal += event.deltaY;
-      setDragOffsetOnFrame(getBoundedOffset(wheelTotal));
-      if (Math.abs(wheelTotal) >= 70) {
+      const wheelDistance = Math.abs(wheelTotal);
+      if (wheelDistance < wheelPreviewThreshold) {
         if (wheelTimer) window.clearTimeout(wheelTimer);
-        go(wheelTotal > 0 ? 1 : -1);
+        wheelTimer = window.setTimeout(() => {
+          wheelTotal = 0;
+        }, 80);
+        return;
+      }
+
+      setScreenTransition("none");
+      setDragOffsetOnFrame(
+        getBoundedOffset(
+          wheelTotal - Math.sign(wheelTotal) * wheelPreviewThreshold,
+        ),
+      );
+      if (wheelDistance >= wheelCommitThreshold) {
+        if (wheelTimer) window.clearTimeout(wheelTimer);
+        go(wheelTotal > 0 ? 1 : -1, magnitude);
         return;
       }
       if (wheelTimer) window.clearTimeout(wheelTimer);
@@ -416,7 +499,20 @@ function useVirtualScreens(
       if (isTransitioning) return;
       lastTouchY = event.touches[0]?.clientY;
       if (lastTouchY === undefined) return;
-      setDragOffsetOnFrame(getBoundedOffset(touchStartY - lastTouchY));
+      const delta = touchStartY - lastTouchY;
+      const direction = delta > 0 ? 1 : -1;
+      const currentScreen = activeScreenRef.current;
+
+      if (
+        (currentScreen === 0 && direction < 0) ||
+        (currentScreen === screenCount - 1 && direction > 0)
+      ) {
+        setScreenTransition(screenTransition);
+        setDragOffsetNow(0);
+        return;
+      }
+
+      setDragOffsetOnFrame(getBoundedOffset(delta));
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
@@ -629,8 +725,50 @@ function SharedGlassBar({
   onOpenControls: () => void;
   refractionTarget: ReactNode;
 }) {
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+
+    let frame: number | undefined;
+
+    const updateRefractionFrame = () => {
+      if (frame !== undefined) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = undefined;
+        const rect = bar.getBoundingClientRect();
+        const overscan = Math.min(48, Math.max(24, window.innerHeight * 0.04));
+
+        bar.style.setProperty("--glass-preview-overscan", `${overscan}px`);
+        bar.style.setProperty("--glass-refraction-left", `${-rect.left}px`);
+        bar.style.setProperty(
+          "--glass-refraction-top",
+          `${overscan - rect.top}px`,
+        );
+        bar.style.setProperty(
+          "--glass-refraction-height",
+          `${window.innerHeight + overscan}px`,
+        );
+      });
+    };
+
+    updateRefractionFrame();
+
+    const resizeObserver = new ResizeObserver(updateRefractionFrame);
+    resizeObserver.observe(bar);
+    window.addEventListener("resize", updateRefractionFrame);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateRefractionFrame);
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+    };
+  }, [settings.height, settings.width]);
+
   return (
     <div
+      ref={barRef}
       className="project-glass-bar px-5 py-4 sm:px-7"
       style={
         {
