@@ -1,5 +1,3 @@
-import Image from "next/image";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -77,13 +75,11 @@ export default function ProjectCard({
             </div>
             {/* Show background image if provided */}
             {imageSrc && imageSrc !== "/placeholder.svg" && (
-              <Image
+              <img
                 src={imageSrc}
                 alt={title}
-                fill
-                sizes="(min-width: 1024px) 66vw, 100vw"
-                priority={priority}
-                className="object-cover opacity-20 blur-xl"
+                loading={priority ? "eager" : "lazy"}
+                className="absolute inset-0 h-full w-full object-cover opacity-20 blur-xl"
               />
             )}
 
@@ -91,13 +87,12 @@ export default function ProjectCard({
             {screenshotSrc && (
               <div className="absolute inset-4 flex items-center justify-center">
                 <div className="relative max-w-full max-h-full rounded-lg overflow-hidden border border-white/20 shadow-2xl">
-                  <Image
+                  <img
                     src={screenshotSrc}
                     alt={title}
                     width={800}
                     height={600}
-                    sizes="(min-width: 1024px) 66vw, 100vw"
-                    priority={priority}
+                    loading={priority ? "eager" : "lazy"}
                     className="object-contain"
                   />
                 </div>
@@ -129,28 +124,28 @@ export default function ProjectCard({
               </div>
               <div className="flex items-center gap-2 self-start sm:self-auto">
                 {githubHref && (
-                  <Link
+                  <a
                     href={githubHref}
                     className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 backdrop-blur transition-colors hover:bg-white/20"
                     aria-label={`View GitHub repository: ${title}`}
                   >
-                    <Image
+                    <img
                       src="/icons/GitHub_Invertocat_Light.svg"
                       alt="GitHub"
                       width={16}
                       height={16}
                       className="h-4 w-4"
                     />
-                  </Link>
+                  </a>
                 )}
-                <Link
+                <a
                   href={href}
                   className=" inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-medium backdrop-blur transition-colors hover:bg-white/20"
                   aria-label={`Open Demo: ${title}`}
                 >
                   View Demo
                   <ArrowRight className="h-4 w-4" />
-                </Link>
+                </a>
               </div>
             </div>
           </div>

@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
@@ -52,13 +51,11 @@ export default function ShowcaseCarousel({
           >
             {/* Media */}
             <div className="relative h-full w-full overflow-hidden rounded-[1.1rem]">
-              <Image
+              <img
                 src={img.src || "/placeholder.svg"}
                 alt={img.caption || "Showcase image"}
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority={i === 0}
+                loading={i === 0 ? "eager" : "lazy"}
+                className="h-full w-full object-cover"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/20" />
             </div>

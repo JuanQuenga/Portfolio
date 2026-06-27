@@ -1,189 +1,96 @@
 # Juan Quenga - Portfolio
 
-A modern, responsive portfolio website built with Next.js 15, showcasing my work as an aspiring software engineer based in Michigan.
+A modern, responsive portfolio website built with TanStack Start, React 19, and Tailwind CSS v4.
 
-## 🚀 Live Demo
+## Live Demo
 
-[View Portfolio](https://juanquenga.vercel.app)
+[View Portfolio](https://www.juanquenga.com)
 
-## ✨ Features
+## Features
 
-- **Modern Design**: Clean, professional layout with smooth animations
-- **Responsive**: Fully responsive design that works on all devices
-- **Interactive Elements**: Hover effects, reveal animations, and smooth transitions
-- **Project Showcase**: Dynamic project cards with screenshots and GitHub links
-- **Performance Optimized**: Built with Next.js 15 and optimized for speed
-- **Accessibility**: WCAG compliant with proper ARIA labels and keyboard navigation
+- Modern portfolio layout with smooth reveal animations
+- Responsive design for mobile, tablet, and desktop
+- Project cards with screenshots, demo links, and GitHub links
+- Tailwind CSS v4 styling with shadcn-style CSS variables
+- TanStack Start SSR build powered by Vite and Nitro
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: Next.js 15 with React 19
-- **Styling**: Tailwind CSS 4.1.9
+- **Framework**: TanStack Start with React 19
+- **Routing**: TanStack Router file-based routes
+- **Build Tool**: Vite
+- **Server Build**: Nitro
+- **Styling**: Tailwind CSS v4
 - **UI Components**: Radix UI primitives with custom styling
-- **Animations**: Motion library for smooth transitions
+- **Animations**: Motion
 - **Icons**: Lucide React
-- **Fonts**: Geist font family
 - **Package Manager**: pnpm
-- **TypeScript**: Full type safety
+- **TypeScript**: Strict type checking
 
-## 📦 Key Dependencies
+## Project Structure
 
-- `next` - React framework
-- `react` & `react-dom` - UI library
-- `tailwindcss` - Utility-first CSS framework
-- `@radix-ui/*` - Accessible UI primitives
-- `motion` - Animation library
-- `lucide-react` - Icon library
-- `class-variance-authority` - Component variant management
-- `tailwind-merge` - Tailwind class merging utility
-
-## 🏗️ Project Structure
-
-````
-portfolio-nextjs/
-├── app/                    # Next.js app directory
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout component
-│   └── page.tsx           # Home page
-├── components/            # Reusable components
-│   ├── ui/               # Base UI components
+```text
+Portfolio/
+├── src/
+│   ├── routes/
+│   │   ├── __root.tsx
+│   │   └── index.tsx
+│   ├── router.tsx
+│   ├── routeTree.gen.ts
+│   └── styles/app.css
+├── components/
+│   ├── ui/
 │   ├── animated-heading.tsx
 │   ├── project-card.tsx
-│   ├── reveal-on-view.tsx
-│   └── ...
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility functions
-├── public/               # Static assets
-│   ├── images/          # Project images
-│   ├── icons/           # SVG icons
-│   └── screenshots/     # Project screenshots
-└── styles/              # Additional styles
-```f
+│   └── reveal-on-view.tsx
+├── hooks/
+├── lib/
+├── public/
+│   ├── images/
+│   ├── icons/
+│   └── screenshots/
+├── vite.config.ts
+└── package.json
+```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm (recommended) or npm
+- Node.js 20+
+- pnpm
 
 ### Installation
 
-1. **Clone the repository**
+```bash
+git clone https://github.com/JuanQuenga/Portfolio.git
+cd Portfolio
+pnpm install
+```
 
-   ```bash
-   git clone https://github.com/juanquenga/portfolio-nextjs.git
-   cd portfolio-nextjs
-````
+### Development
 
-2. **Install dependencies**
+```bash
+pnpm dev
+```
 
-   ```bash
-   pnpm install
-   # or
-   npm install
-   ```
+Open [http://localhost:3000](http://localhost:3000).
 
-3. **Run the development server**
-
-   ```bash
-   pnpm dev
-   # or
-   npm run dev
-   ```
-
-4. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-### Build for Production
+### Production
 
 ```bash
 pnpm build
 pnpm start
 ```
 
-## 🎨 Customization
+## Customization
 
-### Adding New Projects
+Add or edit projects in `src/routes/index.tsx` inside the `projects` array.
 
-Edit `app/page.tsx` and add new project objects to the `projects` array:
+Global styles and Tailwind v4 theme variables live in `src/styles/app.css`.
 
-```typescript
-{
-  title: "Your Project",
-  subtitle: "Project description",
-  imageSrc: "/images/your-project.webp",
-  tags: ["NextJS", "TypeScript", "Tailwind"],
-  href: "#your-project",
-  priority: false,
-  gradientFrom: "#0f172a",
-  gradientTo: "#6d28d9",
-  screenshotSrc: "/screenshots/your-project.png",
-  githubHref: "https://github.com/yourusername/your-project",
-}
-```
-
-### Updating Personal Information
-
-Modify the hero section in `app/page.tsx`:
-
-- Update name, bio, and contact information
-- Replace the Michigan icon with your location
-- Update the companies list
-- Modify the call-to-action button
-
-### Styling
-
-- Global styles: `app/globals.css`
-- Component styles: Individual component files
-- Tailwind config: `tailwind.config.js`
-
-## 📱 Responsive Design
-
-The portfolio is fully responsive with breakpoints:
-
-- Mobile: < 640px
-- Tablet: 640px - 1024px
-- Desktop: > 1024px
-
-## ⚡ Performance
-
-- **Lighthouse Score**: 95+ across all metrics
-- **Core Web Vitals**: Optimized for LCP, FID, and CLS
-- **Image Optimization**: Next.js Image component with proper sizing
-- **Code Splitting**: Automatic route-based code splitting
-- **Bundle Analysis**: Use `pnpm build` to analyze bundle size
-
-## 🔧 Development
-
-### Available Scripts
-
-- `pnpm dev` - Start development server
-- `pnpm build` - Build for production
-- `pnpm start` - Start production server
-- `pnpm lint` - Run ESLint
-
-### Code Style
-
-- TypeScript for type safety
-- ESLint for code quality
-- Prettier for code formatting
-- Tailwind CSS for styling
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/juanquenga/portfolio-nextjs/issues).
-
-## 📞 Contact
+## Contact
 
 Juan Quenga - [juanquenga@gmail.com](mailto:juanquenga@gmail.com)
 
-Project Link: [https://github.com/juanquenga/portfolio-nextjs](https://github.com/juanquenga/portfolio-nextjs)
-
----
-
-⭐ Star this repo if you found it helpful!
+Project Link: [https://github.com/JuanQuenga/Portfolio](https://github.com/JuanQuenga/Portfolio)

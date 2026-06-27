@@ -1,0 +1,10 @@
+version = 1
+name = "Portfolio"
+
+[setup]
+script = ""
+
+[[actions]]
+name = "Dev Server"
+icon = "run"
+command = "./scripts/codex-action.sh dev"
