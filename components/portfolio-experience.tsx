@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { HeatmapBackdrop } from "@/components/heatmap-backdrop";
 import { Slider } from "@/components/ui/slider";
 
 const projects = [
@@ -91,24 +92,15 @@ const heroNameLines = ["Juan", "Quenga"];
 const heroGlassPreset = {
   width: 1600,
   height: 104,
-  radius: 69,
-  strength: 0.065,
-  chromaticAberration: 0.28,
-  blur: 0,
-  depth: 34,
-  curvature: 0.58,
-  splay: 1,
-  glow: 0.22,
-  glowSpread: 1,
-  glowExponent: 1.5,
-  edgeHighlight: 0.33,
-  edgeWidth: 3,
-  edgeExponent: 1.5,
-  specular: 1,
-  specularAngle: 130,
-  shape: "squircle" as const,
-  squircleExponent: 3.9,
-  quality: 512,
+  radius: 52,
+  refraction: 18,
+  blur: 0.46,
+  saturation: 1.22,
+  contrast: 1.08,
+  opacity: 0,
+  sheen: 0.11,
+  edge: 0.18,
+  shadow: 0.12,
 };
 
 type HeroGlassSettings = typeof heroGlassPreset;
@@ -116,37 +108,17 @@ type HeroGlassSettings = typeof heroGlassPreset;
 const glassControls = [
   { key: "width", label: "Width", min: 520, max: 1920, step: 1 },
   { key: "height", label: "Height", min: 80, max: 220, step: 1 },
-  { key: "radius", label: "Radius", min: 0, max: 130, step: 1 },
-  { key: "strength", label: "Strength", min: -0.18, max: 0.18, step: 0.001 },
-  {
-    key: "chromaticAberration",
-    label: "Chroma",
-    min: 0,
-    max: 1,
-    step: 0.01,
-  },
-  { key: "depth", label: "Depth", min: 0, max: 80, step: 1 },
-  { key: "curvature", label: "Curvature", min: 0, max: 1, step: 0.01 },
-  { key: "glow", label: "Glow", min: 0, max: 1, step: 0.01 },
-  {
-    key: "edgeHighlight",
-    label: "Edge",
-    min: 0,
-    max: 1,
-    step: 0.01,
-  },
-  { key: "edgeWidth", label: "Edge Width", min: 0, max: 10, step: 0.1 },
-  { key: "specular", label: "Specular", min: 0, max: 1, step: 0.01 },
-  { key: "specularAngle", label: "Light", min: 0, max: 360, step: 1 },
-  {
-    key: "squircleExponent",
-    label: "Squircle",
-    min: 2,
-    max: 8,
-    step: 0.1,
-  },
+  { key: "radius", label: "Radius", min: 20, max: 96, step: 1 },
+  { key: "refraction", label: "Refraction", min: 0, max: 28, step: 1 },
+  { key: "blur", label: "Blur", min: 0, max: 4, step: 0.1 },
+  { key: "saturation", label: "Saturation", min: 0.8, max: 1.8, step: 0.01 },
+  { key: "contrast", label: "Contrast", min: 0.8, max: 1.4, step: 0.01 },
+  { key: "opacity", label: "Tint", min: 0, max: 0.18, step: 0.005 },
+  { key: "sheen", label: "Sheen", min: 0, max: 0.35, step: 0.005 },
+  { key: "edge", label: "Edge", min: 0, max: 0.35, step: 0.005 },
+  { key: "shadow", label: "Shadow", min: 0, max: 0.6, step: 0.01 },
 ] satisfies Array<{
-  key: keyof Omit<HeroGlassSettings, "shape">;
+  key: keyof HeroGlassSettings;
   label: string;
   min: number;
   max: number;
@@ -178,7 +150,10 @@ export default function PortfolioExperience() {
   const stageRef = useRef<HTMLElement | null>(null);
   const isCompactViewport = useCompactViewport();
   const screenCount = projects.length + 4;
-  const { activeScreen, goToScreen } = useVirtualScreens(screenCount, stageRef);
+  const { activeScreen, screenTransitionPair, goToScreen } = useVirtualScreens(
+    screenCount,
+    stageRef,
+  );
   const activeProjectIndex =
     activeScreen >= 2 && activeScreen < 2 + projects.length
       ? activeScreen - 2
@@ -199,7 +174,7 @@ export default function PortfolioExperience() {
       ref={stageRef}
       className="portfolio-stage relative h-screen isolate overflow-hidden bg-[#020203] text-[#f4f1ea]"
     >
-      <ParallaxBackdrop />
+      <HeatmapBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
       <Header
         onNavigate={goToScreen}
@@ -213,13 +188,13 @@ export default function PortfolioExperience() {
       />
       <PageContent
         activeScreen={activeScreen}
+        screenTransitionPair={screenTransitionPair}
         onNavigate={goToScreen}
       />
       <SharedGlassBar
         project={activeProject}
         settings={glassSettings}
         renderedHeight={renderedGlassHeight}
-        isCompactViewport={isCompactViewport}
       />
       <GlassControlPopover
         open={showGlassControls}
@@ -321,15 +296,22 @@ function SectionNavigator({
 function PageContent({
   mirror = false,
   activeScreen = 0,
+  screenTransitionPair = null,
   onNavigate,
 }: {
   mirror?: boolean;
   activeScreen?: number;
+  screenTransitionPair?: [number, number] | null;
   onNavigate?: (screen: number) => void;
 }) {
-  const visibleScreens = [activeScreen - 1, activeScreen, activeScreen + 1].filter(
-    (screen) => screen >= 0 && screen < projects.length + 4,
-  );
+  const maxScreen = projects.length + 3;
+  const visibleScreens = screenTransitionPair
+    ? screenTransitionPair.filter(
+        (screen) => screen >= 0 && screen <= maxScreen,
+      )
+    : [activeScreen - 1, activeScreen, activeScreen + 1].filter(
+        (screen) => screen >= 0 && screen <= maxScreen,
+      );
 
   return (
     <div className="portfolio-track relative z-10 h-[100svh] overflow-hidden">
@@ -385,6 +367,7 @@ function ScreenContent({
 }
 
 const screenTransition = "transform 580ms cubic-bezier(0.22, 1, 0.36, 1)";
+const screenTransitionMs = 580;
 const screenInputLockMs = 240;
 const residualWheelQuietMs = 120;
 const residualWheelBreakoutDelta = 110;
@@ -400,6 +383,9 @@ function useVirtualScreens(
   stageRef: RefObject<HTMLElement | null>,
 ) {
   const [activeScreen, setActiveScreen] = useState(0);
+  const [screenTransitionPair, setScreenTransitionPair] = useState<
+    [number, number] | null
+  >(null);
   const activeScreenRef = useRef(activeScreen);
   const dragOffsetFrame = useRef<number | undefined>(undefined);
   const pendingDragOffset = useRef(0);
@@ -498,6 +484,7 @@ function useVirtualScreens(
       if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
       if (transitionTimer) window.clearTimeout(transitionTimer);
       setScreenTransition(screenTransition);
+      setScreenTransitionPair([activeScreenRef.current, nextScreen]);
       flushSync(() => {
         setActiveScreen(nextScreen);
       });
@@ -506,9 +493,10 @@ function useVirtualScreens(
       wheelTotal = 0;
       transitionTimer = window.setTimeout(() => {
         isTransitioning = false;
+        setScreenTransitionPair(null);
         isAbsorbingResidualWheel = true;
         scheduleResidualWheelRelease();
-      }, screenInputLockMs);
+      }, screenTransitionMs);
     };
 
     const handleWheel = (event: WheelEvent) => {
@@ -665,40 +653,19 @@ function useVirtualScreens(
 
   return {
     activeScreen,
+    screenTransitionPair,
     goToScreen: (screen: number) => {
       const nextScreen = Math.max(0, Math.min(screenCount - 1, screen));
+      if (nextScreen === activeScreenRef.current) return;
       pendingDragOffset.current = 0;
+      setScreenTransitionPair([activeScreenRef.current, nextScreen]);
       activeScreenRef.current = nextScreen;
       stageRef.current?.style.setProperty("--screen-transition", screenTransition);
       stageRef.current?.style.setProperty("--drag-offset", "0px");
       setActiveScreen(nextScreen);
+      window.setTimeout(() => setScreenTransitionPair(null), screenTransitionMs);
     },
   };
-}
-
-function ParallaxBackdrop() {
-  return (
-    <div
-      className="site-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden"
-      aria-hidden="true"
-    >
-      <div
-        className="site-backdrop-grid absolute -inset-[28svh]"
-      />
-      <div
-        className="site-backdrop-beam absolute left-1/2 top-1/2 h-[34rem] w-[150vw] -translate-x-1/2 -translate-y-1/2 rotate-[-18deg]"
-      />
-      <div
-        className="site-backdrop-glow site-backdrop-glow-cyan absolute -left-[18rem] top-[58svh] h-[42rem] w-[42rem]"
-      />
-      <div
-        className="site-backdrop-glow site-backdrop-glow-lime absolute -right-[16rem] top-[8svh] h-[38rem] w-[38rem]"
-      />
-      <div
-        className="site-backdrop-glow site-backdrop-glow-rose absolute left-[44vw] top-[72svh] h-[28rem] w-[28rem]"
-      />
-    </div>
-  );
 }
 
 function Header({
@@ -709,8 +676,16 @@ function Header({
   onOpenControls: () => void;
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 flex items-start justify-between px-4 pt-4 sm:px-7 sm:pt-6">
-      <nav className="liquid-glass header-nav flex h-12 items-center gap-4 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#f4f1ea]/68 sm:gap-7 sm:px-6 sm:text-xs sm:tracking-[0.16em]">
+    <header className="fixed inset-x-0 top-0 z-40 grid grid-cols-[auto_1fr_auto] items-start px-4 pt-4 sm:px-7 sm:pt-6">
+      <button
+        type="button"
+        onClick={onOpenControls}
+        className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+        aria-label="Tune glass"
+      >
+        <SlidersHorizontal className="size-5" />
+      </button>
+      <nav className="liquid-glass header-nav justify-self-center flex items-center gap-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#f4f1ea]/68 sm:gap-2 sm:text-xs sm:tracking-[0.16em]">
         <a
           href="#top"
           onClick={(event) => {
@@ -742,22 +717,14 @@ function Header({
           Contact
         </a>
       </nav>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-end gap-3">
         <a
           href="https://github.com/JuanQuenga"
-          className="glass-button hidden size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63] sm:inline-flex"
+          className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
           aria-label="Juan Quenga GitHub"
         >
           <Github className="size-5" />
         </a>
-        <button
-          type="button"
-          onClick={onOpenControls}
-          className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-          aria-label="Tune glass"
-        >
-          <SlidersHorizontal className="size-5" />
-        </button>
       </div>
     </header>
   );
@@ -816,49 +783,25 @@ function SharedGlassBar({
   project,
   settings,
   renderedHeight,
-  isCompactViewport,
 }: {
   project: (typeof projects)[number] | null;
   settings: HeroGlassSettings;
   renderedHeight: number;
-  isCompactViewport: boolean;
 }) {
-  const barRef = useRef<HTMLDivElement | null>(null);
-  const glassRadius = isCompactViewport ? renderedHeight / 3 : settings.radius;
-
   return (
     <div
-      ref={barRef}
-      className="project-glass-bar px-5 py-4 sm:px-7"
+      className="liquid-glass header-nav project-glass-bar"
       style={
         {
           "--hero-glass-width": `${settings.width}px`,
           "--glass-height": `${renderedHeight}px`,
-          "--glass-radius": `${glassRadius}px`,
-          "--glass-bottom": "max(1rem, env(safe-area-inset-bottom))",
           height: `${renderedHeight}px`,
           minHeight: `${renderedHeight}px`,
         } as CSSProperties
       }
     >
-      <ShaderGlassLayer
-        width={settings.width}
-        height={renderedHeight}
-        radius={glassRadius}
-        strength={settings.strength}
-        chromaticAberration={settings.chromaticAberration}
-        depth={settings.depth}
-        curvature={settings.curvature}
-        glow={settings.glow}
-        edgeHighlight={settings.edgeHighlight}
-        edgeWidth={settings.edgeWidth}
-        specular={settings.specular}
-        specularAngle={settings.specularAngle}
-        squircleExponent={settings.squircleExponent}
-        className="project-glass-layer"
-      />
       {project ? (
-        <div className="hero-glass-content project-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
+        <div className="hero-glass-content project-glass-content grid h-full gap-5 px-5 py-4 text-base font-semibold text-[#f4f1ea]/78 sm:px-7 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
           <div className="project-glass-text min-w-0">
             <div className="project-glass-title truncate text-2xl font-black uppercase leading-none text-white">
               {project.title}
@@ -883,8 +826,8 @@ function SharedGlassBar({
           </div>
         </div>
       ) : (
-        <div className="hero-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1.1fr_1.4fr_1fr] lg:grid-cols-[minmax(220px,0.95fr)_minmax(380px,1.65fr)_minmax(320px,1.25fr)_auto_auto_minmax(230px,1fr)] lg:items-center">
-          <div className="flex min-w-0 items-center gap-4">
+        <div className="hero-glass-content flex h-full items-center gap-4 px-5 py-4 text-base font-semibold text-[#f4f1ea]/78 sm:gap-6 sm:px-7">
+          <div className="flex min-w-0 shrink-0 items-center gap-4">
             <div className="glass-button flex size-14 shrink-0 items-center justify-center font-mono text-lg font-black leading-none text-white">
               JQ
             </div>
@@ -898,309 +841,17 @@ function SharedGlassBar({
             </div>
           </div>
 
-          <p className="mobile-glass-copy min-w-0 max-w-none leading-7 text-[#f4f1ea]/62">
+          <p className="mobile-glass-copy hidden min-w-0 flex-1 leading-7 text-[#f4f1ea]/62 sm:block">
             I build React products for stores, local businesses, and internal
             teams.
           </p>
 
-          <div className="mobile-glass-secondary flex min-w-0 flex-wrap justify-center gap-x-9 gap-y-2 text-[#f4f1ea]/72">
-            {heroSkills.map((skill) => (
-              <span key={skill}>{skill}</span>
-            ))}
-          </div>
-
-          <div className="mobile-glass-secondary flex min-w-0 items-center justify-end gap-3 truncate text-[#f4f1ea]/72">
+          <div className="hero-glass-location ml-auto flex shrink-0 items-center gap-3 truncate text-[#f4f1ea]/72">
             <MapPin className="size-5 shrink-0 text-[#d7ff63]" />
             Southeast Michigan
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-const shaderVertexSource = `
-  attribute vec2 aPosition;
-  varying vec2 vUv;
-
-  void main() {
-    vUv = aPosition * 0.5 + 0.5;
-    gl_Position = vec4(aPosition, 0.0, 1.0);
-  }
-`;
-
-const shaderFragmentSource = `
-  precision mediump float;
-
-  varying vec2 vUv;
-
-  uniform vec2 uResolution;
-  uniform float uRadius;
-  uniform float uStrength;
-  uniform float uChroma;
-  uniform float uDepth;
-  uniform float uCurvature;
-  uniform float uGlow;
-  uniform float uEdge;
-  uniform float uEdgeWidth;
-  uniform float uSpecular;
-  uniform float uSpecularAngle;
-  uniform float uSquircleExponent;
-
-  float roundedSquircleSdf(vec2 p, vec2 halfSize, float radius, float exponent) {
-    float r = min(radius, min(halfSize.x, halfSize.y));
-    vec2 q = abs(p) - (halfSize - vec2(r));
-    vec2 outside = max(q, 0.0);
-    float outsideDistance = pow(pow(outside.x, exponent) + pow(outside.y, exponent), 1.0 / exponent) - r;
-    float insideDistance = min(max(q.x, q.y), 0.0);
-    return outsideDistance + insideDistance;
-  }
-
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-  }
-
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-
-    return mix(
-      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-      u.y
-    );
-  }
-
-  vec3 backdrop(vec2 uv) {
-    vec2 p = uv - 0.5;
-    float cyan = exp(-dot(p - vec2(-0.36, -0.18), p - vec2(-0.36, -0.18)) * 6.0);
-    float lime = exp(-dot(p - vec2(0.38, 0.18), p - vec2(0.38, 0.18)) * 4.4);
-    float rose = exp(-dot(p - vec2(0.08, -0.46), p - vec2(0.08, -0.46)) * 7.5);
-    vec3 color = vec3(0.014, 0.017, 0.02);
-    color += vec3(0.035, 0.22, 0.24) * cyan;
-    color += vec3(0.22, 0.25, 0.065) * lime;
-    color += vec3(0.22, 0.055, 0.14) * rose;
-    color += vec3(0.045) * noise(uv * vec2(18.0, 5.0));
-    return color;
-  }
-
-  void main() {
-    vec2 px = vUv * uResolution;
-    vec2 halfSize = uResolution * 0.5;
-    vec2 p = px - halfSize;
-    float sdf = roundedSquircleSdf(p, halfSize - vec2(1.0), uRadius, uSquircleExponent);
-    float mask = 1.0 - smoothstep(-1.0, 1.0, sdf);
-
-    vec2 normalized = p / max(halfSize, vec2(1.0));
-    float dome = pow(max(0.0, 1.0 - dot(normalized, normalized) * 0.36), 1.3);
-    vec2 bend = normalized * dome * uStrength * (82.0 + uDepth * 1.6) * uCurvature / max(uResolution, vec2(1.0));
-
-    vec3 refracted;
-    refracted.r = backdrop(vUv + bend * (1.0 + uChroma * 0.85)).r;
-    refracted.g = backdrop(vUv + bend * (1.0 + uChroma * 0.25)).g;
-    refracted.b = backdrop(vUv + bend).b;
-
-    float edge = 1.0 - smoothstep(0.0, max(1.0, uEdgeWidth * 3.4), -sdf);
-    float inner = 1.0 - smoothstep(0.0, 28.0 + uDepth * 0.55, -sdf);
-    float ring = smoothstep(0.08, 0.86, edge) * smoothstep(1.0, 0.18, inner);
-    float innerRing = smoothstep(0.08, 0.82, inner) * (1.0 - smoothstep(0.82, 1.0, inner));
-
-    float angle = radians(uSpecularAngle);
-    vec2 lightDir = normalize(vec2(cos(angle), sin(angle)));
-    float sweep = pow(max(0.0, dot(normalize(normalized + 0.0001), lightDir)), 10.0);
-    float topLight = smoothstep(0.98, 0.08, vUv.y) * 0.34;
-    float bottomShade = smoothstep(0.46, 1.0, vUv.y) * 0.14;
-
-    vec3 color = refracted;
-    color = mix(color, vec3(0.004, 0.006, 0.008), 0.34);
-    color += vec3(0.86, 0.95, 0.78) * ring * uEdge * 0.55;
-    color += vec3(0.5, 0.78, 0.86) * innerRing * uEdge * 0.18;
-    color += vec3(1.0, 0.98, 0.88) * sweep * uSpecular * 0.24;
-    color += vec3(0.72, 0.98, 1.0) * uGlow * topLight;
-    color -= vec3(bottomShade);
-
-    gl_FragColor = vec4(color, mask);
-  }
-`;
-
-function ShaderGlassLayer({
-  className,
-  width,
-  height,
-  radius,
-  strength,
-  chromaticAberration,
-  depth,
-  curvature,
-  glow,
-  edgeHighlight,
-  edgeWidth,
-  specular,
-  specularAngle,
-  squircleExponent,
-}: {
-  className?: string;
-  width: number;
-  height: number;
-  radius: number;
-  strength: number;
-  chromaticAberration: number;
-  depth: number;
-  curvature: number;
-  glow: number;
-  edgeHighlight: number;
-  edgeWidth: number;
-  specular: number;
-  specularAngle: number;
-  squircleExponent: number;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const gl = canvas.getContext("webgl", {
-      alpha: true,
-      antialias: true,
-      depth: false,
-      powerPreference: "high-performance",
-      premultipliedAlpha: true,
-      preserveDrawingBuffer: false,
-      stencil: false,
-    });
-
-    if (!gl) return;
-
-    const compileShader = (type: number, source: string) => {
-      const shader = gl.createShader(type);
-      if (!shader) return null;
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        gl.deleteShader(shader);
-        return null;
-      }
-
-      return shader;
-    };
-
-    const vertexShader = compileShader(gl.VERTEX_SHADER, shaderVertexSource);
-    const fragmentShader = compileShader(gl.FRAGMENT_SHADER, shaderFragmentSource);
-    const program = gl.createProgram();
-
-    if (!vertexShader || !fragmentShader || !program) return;
-
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      gl.deleteProgram(program);
-      return;
-    }
-
-    const buffer = gl.createBuffer();
-    const positionLocation = gl.getAttribLocation(program, "aPosition");
-    const uniforms = {
-      resolution: gl.getUniformLocation(program, "uResolution"),
-      radius: gl.getUniformLocation(program, "uRadius"),
-      strength: gl.getUniformLocation(program, "uStrength"),
-      chroma: gl.getUniformLocation(program, "uChroma"),
-      depth: gl.getUniformLocation(program, "uDepth"),
-      curvature: gl.getUniformLocation(program, "uCurvature"),
-      glow: gl.getUniformLocation(program, "uGlow"),
-      edge: gl.getUniformLocation(program, "uEdge"),
-      edgeWidth: gl.getUniformLocation(program, "uEdgeWidth"),
-      specular: gl.getUniformLocation(program, "uSpecular"),
-      specularAngle: gl.getUniformLocation(program, "uSpecularAngle"),
-      squircleExponent: gl.getUniformLocation(program, "uSquircleExponent"),
-    };
-
-    if (!buffer || positionLocation < 0) return;
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-      gl.STATIC_DRAW,
-    );
-
-    let frame: number | undefined;
-
-    const render = () => {
-      frame = undefined;
-      const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const canvasWidth = Math.max(1, Math.round(rect.width * dpr));
-      const canvasHeight = Math.max(1, Math.round(rect.height * dpr));
-
-      if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-      }
-
-      gl.viewport(0, 0, canvasWidth, canvasHeight);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(program);
-      gl.enableVertexAttribArray(positionLocation);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-      gl.uniform2f(uniforms.resolution, canvasWidth, canvasHeight);
-      gl.uniform1f(uniforms.radius, radius * dpr);
-      gl.uniform1f(uniforms.strength, strength);
-      gl.uniform1f(uniforms.chroma, chromaticAberration);
-      gl.uniform1f(uniforms.depth, depth);
-      gl.uniform1f(uniforms.curvature, curvature);
-      gl.uniform1f(uniforms.glow, glow);
-      gl.uniform1f(uniforms.edge, edgeHighlight);
-      gl.uniform1f(uniforms.edgeWidth, edgeWidth * dpr);
-      gl.uniform1f(uniforms.specular, specular);
-      gl.uniform1f(uniforms.specularAngle, specularAngle);
-      gl.uniform1f(uniforms.squircleExponent, squircleExponent);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    };
-
-    const queueRender = () => {
-      if (frame !== undefined) return;
-      frame = window.requestAnimationFrame(render);
-    };
-
-    const resizeObserver = new ResizeObserver(queueRender);
-    resizeObserver.observe(canvas);
-    queueRender();
-
-    return () => {
-      resizeObserver.disconnect();
-      if (frame !== undefined) window.cancelAnimationFrame(frame);
-      gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
-      gl.deleteShader(vertexShader);
-      gl.deleteShader(fragmentShader);
-    };
-  }, [
-    chromaticAberration,
-    curvature,
-    depth,
-    edgeHighlight,
-    edgeWidth,
-    glow,
-    height,
-    radius,
-    specular,
-    specularAngle,
-    squircleExponent,
-    strength,
-    width,
-  ]);
-
-  return (
-    <div className={className} aria-hidden="true">
-      <canvas ref={canvasRef} className="shader-glass-canvas" />
     </div>
   );
 }
@@ -1214,7 +865,7 @@ function GlassControlPopover({
 }: {
   open: boolean;
   settings: HeroGlassSettings;
-  onChange: (key: keyof Omit<HeroGlassSettings, "shape">, value: number) => void;
+  onChange: (key: keyof HeroGlassSettings, value: number) => void;
   onClose: () => void;
   onReset: () => void;
 }) {
@@ -1222,8 +873,7 @@ function GlassControlPopover({
 
   return (
     <div
-      className="glass-control-popover fixed right-4 z-50 w-[min(25rem,calc(100vw-2rem))] rounded-[1.35rem] border border-white/12 bg-[#09090b]/92 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-      style={{ "--glass-height": `${settings.height}px` } as CSSProperties}
+      className="glass-control-popover fixed z-50 w-[min(25rem,calc(100vw-2rem))] rounded-[1.35rem] border border-white/12 bg-[#09090b]/92 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
