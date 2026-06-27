@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -12,9 +17,15 @@ import {
   MonitorCheck,
   PackageCheck,
   PanelsTopLeft,
+  RotateCcw,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
-import { LiquidGlass } from "liquid-glass-web-react";
+import {
+  LiquidGlass,
+} from "@/lib/liquid-glass-squircle";
 import { motion, useScroll, useSpring, useTransform } from "motion/react";
+import { Slider } from "@/components/ui/slider";
 
 const projects = [
   {
@@ -63,6 +74,76 @@ const projects = [
 
 const heroSkills = ["React", "Next", "TanStack", "Convex"];
 const heroNameLines = ["Juan", "Quenga"];
+const heroGlassPreset = {
+  width: 1600,
+  height: 104,
+  radius: 69,
+  strength: 0.065,
+  chromaticAberration: 0.28,
+  blur: 0,
+  depth: 34,
+  curvature: 0.58,
+  splay: 1,
+  glow: 0.22,
+  glowSpread: 1,
+  glowExponent: 1.5,
+  edgeHighlight: 0.33,
+  edgeWidth: 3,
+  edgeExponent: 1.5,
+  specular: 1,
+  specularAngle: 130,
+  shape: "squircle" as const,
+  squircleExponent: 3.9,
+  quality: 512,
+};
+
+type HeroGlassSettings = typeof heroGlassPreset;
+
+const glassControls = [
+  { key: "width", label: "Width", min: 520, max: 1920, step: 1 },
+  { key: "height", label: "Height", min: 80, max: 220, step: 1 },
+  { key: "radius", label: "Radius", min: 0, max: 130, step: 1 },
+  { key: "strength", label: "Strength", min: -0.18, max: 0.18, step: 0.001 },
+  {
+    key: "chromaticAberration",
+    label: "Chroma",
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  { key: "blur", label: "Blur", min: 0, max: 6, step: 0.1 },
+  { key: "depth", label: "Depth", min: 0, max: 80, step: 1 },
+  { key: "curvature", label: "Curvature", min: 0, max: 1, step: 0.01 },
+  { key: "splay", label: "Splay", min: -1, max: 1, step: 0.01 },
+  { key: "glow", label: "Glow", min: 0, max: 1, step: 0.01 },
+  { key: "glowSpread", label: "Glow Spread", min: 0.1, max: 4, step: 0.05 },
+  { key: "glowExponent", label: "Glow Exp", min: 0.2, max: 4, step: 0.05 },
+  {
+    key: "edgeHighlight",
+    label: "Edge",
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  { key: "edgeWidth", label: "Edge Width", min: 0, max: 10, step: 0.1 },
+  { key: "edgeExponent", label: "Edge Exp", min: 0.2, max: 5, step: 0.05 },
+  { key: "specular", label: "Specular", min: 0, max: 1, step: 0.01 },
+  { key: "specularAngle", label: "Light", min: 0, max: 360, step: 1 },
+  {
+    key: "squircleExponent",
+    label: "Squircle",
+    min: 2,
+    max: 8,
+    step: 0.1,
+  },
+  { key: "quality", label: "Quality", min: 128, max: 1024, step: 64 },
+] satisfies Array<{
+  key: keyof Omit<HeroGlassSettings, "shape">;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}>;
 
 const capabilities = [
   {
@@ -83,131 +164,56 @@ const capabilities = [
 ];
 
 export default function PortfolioExperience() {
-  const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(
-    null,
-  );
-
-  useEffect(() => {
-    const sections = document.querySelectorAll<HTMLElement>(
-      "[data-glass-context]",
-    );
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const activeEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-        if (!activeEntry) return;
-
-        const projectIndex = (activeEntry.target as HTMLElement).dataset
-          .projectIndex;
-        setActiveProjectIndex(projectIndex ? Number(projectIndex) : null);
-      },
-      {
-        root: null,
-        rootMargin: "-35% 0px -35% 0px",
-        threshold: [0.2, 0.45, 0.7],
-      },
-    );
-
-    sections.forEach((section) => observer.observe(section));
-
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const getSections = () => [
-      ...document.querySelectorAll<HTMLElement>("section[data-glass-context]"),
-    ];
-    let isSnapping = false;
-    let touchStartY = 0;
-
-    const nearestSectionIndex = (sections: HTMLElement[]) => {
-      const viewportMiddle = window.scrollY + window.innerHeight / 2;
-
-      return sections.reduce((nearestIndex, section, index) => {
-        const nearestDistance = Math.abs(
-          sections[nearestIndex].offsetTop +
-            sections[nearestIndex].offsetHeight / 2 -
-            viewportMiddle,
-        );
-        const sectionDistance = Math.abs(
-          section.offsetTop + section.offsetHeight / 2 - viewportMiddle,
-        );
-
-        return sectionDistance < nearestDistance ? index : nearestIndex;
-      }, 0);
-    };
-
-    const snapByDirection = (direction: 1 | -1) => {
-      if (isSnapping) return;
-
-      const sections = getSections();
-      const currentIndex = nearestSectionIndex(sections);
-      const nextIndex = Math.min(
-        Math.max(currentIndex + direction, 0),
-        sections.length - 1,
-      );
-
-      if (nextIndex === currentIndex) return;
-
-      isSnapping = true;
-      sections[nextIndex].scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-      window.setTimeout(() => {
-        isSnapping = false;
-      }, 850);
-    };
-
-    const handleWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) < 12) return;
-
-      event.preventDefault();
-      snapByDirection(event.deltaY > 0 ? 1 : -1);
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      touchStartY = event.touches[0]?.clientY ?? 0;
-    };
-
-    const handleTouchEnd = (event: TouchEvent) => {
-      const touchEndY = event.changedTouches[0]?.clientY ?? touchStartY;
-      const deltaY = touchStartY - touchEndY;
-
-      if (Math.abs(deltaY) < 42) return;
-      snapByDirection(deltaY > 0 ? 1 : -1);
-    };
-
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchend", handleTouchEnd, { passive: true });
-
-    return () => {
-      window.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, []);
-
-  const activeProject =
-    activeProjectIndex === null ? null : (projects[activeProjectIndex] ?? null);
+  const [glassSettings, setGlassSettings] =
+    useState<HeroGlassSettings>(heroGlassPreset);
+  const [showGlassControls, setShowGlassControls] = useState(false);
 
   return (
     <main className="relative min-h-screen isolate overflow-x-hidden bg-[#020203] text-[#f4f1ea]">
       <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
       <Header />
-      <div className="relative z-10">
-        <Hero />
-        <Work />
-        <Practice />
-        <Contact />
-      </div>
-      <FixedGlassBar project={activeProject} />
+      <PageContent
+        settings={glassSettings}
+        onOpenControls={() => setShowGlassControls(true)}
+      />
+      <GlassControlPopover
+        open={showGlassControls}
+        settings={glassSettings}
+        onClose={() => setShowGlassControls(false)}
+        onReset={() => setGlassSettings(heroGlassPreset)}
+        onChange={(key, value) =>
+          setGlassSettings((current) => ({ ...current, [key]: value }))
+        }
+      />
     </main>
+  );
+}
+
+function PageContent({
+  mirror = false,
+  settings,
+  onOpenControls,
+}: {
+  mirror?: boolean;
+  settings: HeroGlassSettings;
+  onOpenControls: () => void;
+}) {
+  return (
+    <div className="relative z-10">
+      <Hero
+        mirror={mirror}
+        settings={settings}
+        onOpenControls={onOpenControls}
+      />
+      <Work
+        mirror={mirror}
+        settings={settings}
+        onOpenControls={onOpenControls}
+      />
+      <Practice mirror={mirror} />
+      <Contact mirror={mirror} />
+    </div>
   );
 }
 
@@ -256,35 +262,6 @@ function ParallaxBackdrop() {
   );
 }
 
-function GlassRefractionLayer() {
-  return (
-    <LiquidGlass
-      x={0.5}
-      y={0.5}
-      width={1480}
-      height={170}
-      radius="auto"
-      strength={0.06}
-      chromaticAberration={0.3}
-      blur={0}
-      depth={24}
-      curvature={0.82}
-      splay={1}
-      glow={0.28}
-      edgeHighlight={0.34}
-      specular={1}
-      specularAngle={130}
-      quality={512}
-      shadow={false}
-      className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-100"
-      style={{ position: "absolute", inset: 0 }}
-      aria-hidden="true"
-    >
-      <div className="glass-backdrop absolute inset-0 rounded-[inherit]" />
-    </LiquidGlass>
-  );
-}
-
 function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex items-start justify-between px-4 pt-4 sm:px-7 sm:pt-6">
@@ -326,20 +303,28 @@ function Header() {
   );
 }
 
-function Hero() {
+function Hero({
+  mirror = false,
+  settings,
+  onOpenControls,
+}: {
+  mirror?: boolean;
+  settings: HeroGlassSettings;
+  onOpenControls: () => void;
+}) {
   return (
     <section
-      id="top"
-      data-glass-context="home"
-      className="relative flex min-h-[100svh] px-4 pb-40 pt-28 sm:px-7 sm:pb-36"
+      id={mirror ? undefined : "top"}
+      data-glass-context={mirror ? undefined : "home"}
+      className="relative flex min-h-[100svh] px-4 pb-[clamp(8rem,17svh,12rem)] pt-28 sm:px-7"
     >
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col justify-end">
-        <div className="mb-10 grid gap-10 lg:grid-cols-[1fr_300px] lg:items-end">
+      <div className="mx-auto flex w-full max-w-[1600px] items-end">
+        <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(220px,0.28fr)] lg:items-end">
           <Reveal>
-            <Code2 className="mb-6 size-10 text-[#f4f1ea]" />
+            <Code2 className="mb-5 size-8 text-[#f4f1ea] sm:size-9" />
             <GlitchTitle lines={heroNameLines} />
             <p
-              className="hero-kicker mt-3 max-w-[22rem] font-mono text-[clamp(0.95rem,4.7vw,2.25rem)] font-black uppercase leading-tight tracking-normal text-white sm:max-w-full"
+              className="hero-kicker mt-4 max-w-[22rem] font-mono text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white sm:max-w-full"
               data-text="Full Stack Product Engineer"
             >
               Full Stack Product Engineer
@@ -349,7 +334,7 @@ function Hero() {
           <Reveal delay={0.08} className="hidden lg:block">
             <a
               href="#work"
-              className="group block text-right text-sm font-black text-[#f4f1ea]"
+              className="group block pb-2 text-right text-sm font-black text-[#f4f1ea]"
             >
               Work
               <span className="mt-5 block h-px w-full bg-[#f4f1ea]/28 transition group-hover:bg-[#d7ff63]" />
@@ -357,37 +342,56 @@ function Hero() {
           </Reveal>
         </div>
       </div>
+      <SharedGlassBar
+        project={null}
+        settings={settings}
+        onOpenControls={onOpenControls}
+      />
     </section>
   );
 }
 
-function FixedGlassBar({
+function SharedGlassBar({
   project,
+  settings,
+  onOpenControls,
 }: {
   project: (typeof projects)[number] | null;
+  settings: HeroGlassSettings;
+  onOpenControls: () => void;
 }) {
   return (
-    <aside className="liquid-glass hero-glass p-4 sm:p-5">
-      <GlassRefractionLayer />
+    <div
+      className="project-glass-bar px-5 py-4 sm:px-7"
+      style={
+        {
+          "--hero-glass-width": `${settings.width}px`,
+          "--glass-height": `${settings.height}px`,
+          "--glass-radius": `${settings.radius}px`,
+          height: `${settings.height}px`,
+          minHeight: `${settings.height}px`,
+        } as CSSProperties
+      }
+    >
       {project ? (
-        <div className="grid gap-4 text-sm font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[0.52fr_1fr_auto]">
-          <div>
-            <div className="text-xl font-black uppercase leading-none text-white sm:text-2xl">
+        <div className="hero-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
+          <div className="min-w-0">
+            <div className="truncate text-2xl font-black uppercase leading-none text-white">
               {project.title}
             </div>
-            <p className="mt-2 max-w-xl leading-6 text-[#f4f1ea]/62">
+            <p className="mt-2 max-w-3xl truncate leading-6 text-[#f4f1ea]/62">
               {project.summary}
             </p>
           </div>
-          <div className="hidden flex-wrap gap-x-8 gap-y-3 text-[#f4f1ea]/72 lg:flex">
+          <div className="hidden min-w-0 flex-wrap justify-center gap-x-9 gap-y-2 text-[#f4f1ea]/72 lg:flex">
             {heroSkills.map((skill) => (
               <span key={skill}>{skill}</span>
             ))}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 justify-self-end">
             <a
               href={project.href}
-              className="glass-button glass-button-primary inline-flex h-11 items-center gap-2 px-4 text-xs font-bold uppercase tracking-[0.12em] transition hover:scale-[1.015]"
+              className="glass-button glass-button-primary inline-flex h-[3.25rem] items-center gap-2 px-5 text-xs font-bold uppercase tracking-[0.14em] transition hover:scale-[1.015]"
             >
               Open
               <ArrowUpRight className="size-4" />
@@ -395,32 +399,44 @@ function FixedGlassBar({
             {project.githubHref ? (
               <a
                 href={project.githubHref}
-                className="glass-button inline-flex size-11 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+                className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
                 aria-label={`View ${project.title} on GitHub`}
               >
-                <Github className="size-4" />
+                <Github className="size-5" />
               </a>
             ) : null}
+            <button
+              type="button"
+              onClick={onOpenControls}
+              className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+              aria-label="Tune glass"
+            >
+              <SlidersHorizontal className="size-5" />
+            </button>
           </div>
         </div>
       ) : (
-        <div className="grid gap-5 text-sm font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1.2fr_1.4fr_1fr] lg:grid-cols-[0.7fr_1.45fr_2fr_0.8fr_1.15fr] lg:items-center">
-          <div className="flex items-center gap-3">
+        <div className="hero-glass-content grid h-full gap-5 text-base font-semibold text-[#f4f1ea]/78 sm:grid-cols-[1.1fr_1.4fr_1fr] lg:grid-cols-[minmax(220px,0.95fr)_minmax(380px,1.65fr)_minmax(320px,1.25fr)_auto_auto_minmax(230px,1fr)] lg:items-center">
+          <div className="flex min-w-0 items-center gap-4">
             <div className="glass-button flex size-14 shrink-0 items-center justify-center font-mono text-lg font-black leading-none text-white">
               JQ
             </div>
-            <div>
-              <div className="text-white">Juan Quenga</div>
-              <div className="text-[#f4f1ea]/58">Product interfaces</div>
+            <div className="min-w-0">
+              <div className="text-[1.05rem] leading-5 text-white">
+                Juan Quenga
+              </div>
+              <div className="mt-1 leading-5 text-[#f4f1ea]/58">
+                Product interfaces
+              </div>
             </div>
           </div>
 
-          <p className="max-w-md leading-6 text-[#f4f1ea]/62">
+          <p className="min-w-0 max-w-none leading-7 text-[#f4f1ea]/62">
             I build React products for stores, local businesses, and internal
             teams.
           </p>
 
-          <div className="flex flex-wrap gap-x-8 gap-y-3 text-[#f4f1ea]/72">
+          <div className="flex min-w-0 flex-wrap justify-center gap-x-9 gap-y-2 text-[#f4f1ea]/72">
             {heroSkills.map((skill) => (
               <span key={skill}>{skill}</span>
             ))}
@@ -428,19 +444,133 @@ function FixedGlassBar({
 
           <a
             href="https://github.com/JuanQuenga"
-            className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+            className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
             aria-label="Juan Quenga GitHub"
           >
             <Github className="size-5" />
           </a>
 
-          <div className="flex items-center gap-2 text-[#f4f1ea]/72">
-            <MapPin className="size-4 text-[#d7ff63]" />
+          <button
+            type="button"
+            onClick={onOpenControls}
+            className="glass-button inline-flex size-[3.25rem] items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
+            aria-label="Tune glass"
+          >
+            <SlidersHorizontal className="size-5" />
+          </button>
+
+          <div className="flex min-w-0 items-center justify-end gap-3 truncate text-[#f4f1ea]/72">
+            <MapPin className="size-5 shrink-0 text-[#d7ff63]" />
             Southeast Michigan
           </div>
         </div>
       )}
-    </aside>
+    </div>
+  );
+}
+
+function GlassControlPopover({
+  open,
+  settings,
+  onChange,
+  onClose,
+  onReset,
+}: {
+  open: boolean;
+  settings: HeroGlassSettings;
+  onChange: (key: keyof Omit<HeroGlassSettings, "shape">, value: number) => void;
+  onClose: () => void;
+  onReset: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="glass-control-popover fixed right-4 z-50 w-[min(25rem,calc(100vw-2rem))] rounded-[1.35rem] border border-white/12 bg-[#09090b]/92 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+      style={{ "--glass-height": `${settings.height}px` } as CSSProperties}
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+            Glass Controls
+          </h2>
+          <p className="mt-1 text-xs font-semibold text-white/44">
+            Homepage fixed bar
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onReset}
+            className="glass-control-icon"
+            aria-label="Reset glass"
+          >
+            <RotateCcw className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="glass-control-icon"
+            aria-label="Close glass controls"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="max-h-[min(34rem,calc(100svh-13rem))] space-y-3 overflow-y-auto pr-1">
+        {glassControls.map((control) => (
+          <GlassControlSlider
+            key={control.key}
+            label={control.label}
+            min={control.min}
+            max={control.max}
+            step={control.step}
+            value={settings[control.key] as number}
+            onChange={(value) => onChange(control.key, value)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GlassControlSlider({
+  label,
+  min,
+  max,
+  step,
+  value,
+  onChange,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const valueLabel =
+    step >= 1 ? Math.round(value).toString() : value.toFixed(step < 0.01 ? 3 : 2);
+
+  return (
+    <label className="block rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
+      <span className="mb-3 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.08em] text-white/62">
+        {label}
+        <span className="font-mono text-white">{valueLabel}</span>
+      </span>
+      <Slider
+        value={[value]}
+        min={min}
+        max={max}
+        step={step}
+        onValueChange={([nextValue]) => {
+          if (nextValue === undefined) return;
+          onChange(nextValue);
+        }}
+        className="glass-control-slider"
+      />
+    </label>
   );
 }
 
@@ -498,12 +628,20 @@ function GlitchTitle({ lines }: { lines: string[] }) {
   );
 }
 
-function Work() {
+function Work({
+  mirror = false,
+  settings,
+  onOpenControls,
+}: {
+  mirror?: boolean;
+  settings: HeroGlassSettings;
+  onOpenControls: () => void;
+}) {
   return (
     <>
       <section
-        id="work"
-        data-glass-context="work"
+        id={mirror ? undefined : "work"}
+        data-glass-context={mirror ? undefined : "work"}
         className="relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
       >
         <Reveal className="mx-auto grid w-full max-w-7xl content-end gap-6 border-b border-[#f4f1ea]/12 pb-36 lg:grid-cols-[0.78fr_1fr] lg:items-end">
@@ -517,7 +655,14 @@ function Work() {
       </section>
 
       {projects.map((project, index) => (
-        <ProjectScreen key={project.title} index={index} project={project} />
+        <ProjectScreen
+          key={project.title}
+          index={index}
+          project={project}
+          mirror={mirror}
+          settings={settings}
+          onOpenControls={onOpenControls}
+        />
       ))}
     </>
   );
@@ -526,39 +671,80 @@ function Work() {
 function ProjectScreen({
   index,
   project,
+  mirror = false,
+  settings,
+  onOpenControls,
 }: {
   index: number;
   project: (typeof projects)[number];
+  mirror?: boolean;
+  settings: HeroGlassSettings;
+  onOpenControls: () => void;
 }) {
   return (
     <section
-      data-glass-context="project"
-      data-project-index={index}
+      data-glass-context={mirror ? undefined : "project"}
+      data-project-index={mirror ? undefined : index}
       className="project-screen relative flex h-[100svh] items-center px-4 py-10 sm:px-6"
     >
       <Reveal className="mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
-        <a
-          href={project.href}
-          className="glass-frame project-shot group block"
-          aria-label={`Open ${project.title}`}
-        >
-          <img
-            src={project.screenshotSrc}
-            alt={`${project.title} screenshot`}
-            loading={index === 0 ? "eager" : "lazy"}
-            className="glass-refract aspect-[16/9] w-full object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
+        <div className="glass-frame project-shot relative overflow-hidden">
+          <a
+            href={project.href}
+            className="group block"
+            aria-label={`Open ${project.title}`}
+          >
+            <LiquidGlass
+              x={0.5}
+              y={0.88}
+              width={Math.min(settings.width, 1480)}
+              height={settings.height}
+              radius={settings.radius}
+              strength={settings.strength}
+              chromaticAberration={settings.chromaticAberration}
+              blur={settings.blur}
+              depth={settings.depth}
+              curvature={settings.curvature}
+              splay={settings.splay}
+              glow={settings.glow}
+              glowSpread={settings.glowSpread}
+              glowExponent={settings.glowExponent}
+              edgeHighlight={settings.edgeHighlight}
+              edgeWidth={settings.edgeWidth}
+              edgeExponent={settings.edgeExponent}
+              specular={settings.specular}
+              specularAngle={settings.specularAngle}
+              shape={settings.shape}
+              squircleExponent={settings.squircleExponent}
+              quality={settings.quality}
+              shadow={false}
+              className="project-liquid-stage"
+            >
+              <img
+                src={project.screenshotSrc}
+                alt={`${project.title} screenshot`}
+                loading={mirror || index === 0 ? "eager" : "lazy"}
+                decoding={mirror ? "sync" : "async"}
+                className="glass-refract aspect-[16/9] w-full object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
+              />
+            </LiquidGlass>
+          </a>
+          <SharedGlassBar
+            project={project}
+            settings={settings}
+            onOpenControls={onOpenControls}
           />
-        </a>
+        </div>
       </Reveal>
     </section>
   );
 }
 
-function Practice() {
+function Practice({ mirror = false }: { mirror?: boolean }) {
   return (
     <section
-      id="practice"
-      data-glass-context="practice"
+      id={mirror ? undefined : "practice"}
+      data-glass-context={mirror ? undefined : "practice"}
       className="relative px-4 py-16 sm:px-6 lg:py-24"
     >
       <div className="mx-auto max-w-7xl border-y border-[#f4f1ea]/12 py-12">
@@ -590,11 +776,11 @@ function Practice() {
   );
 }
 
-function Contact() {
+function Contact({ mirror = false }: { mirror?: boolean }) {
   return (
     <section
-      id="contact"
-      data-glass-context="contact"
+      id={mirror ? undefined : "contact"}
+      data-glass-context={mirror ? undefined : "contact"}
       className="relative px-4 py-16 sm:px-6 lg:py-24"
     >
       <Reveal className="mx-auto grid max-w-7xl gap-8 border-t border-[#f4f1ea]/12 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">

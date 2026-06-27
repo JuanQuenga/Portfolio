@@ -1,4 +1,9 @@
-import type { ComponentProps, ForwardRefExoticComponent, RefAttributes } from "react";
+import type {
+  ComponentProps,
+  ForwardRefExoticComponent,
+  ReactNode,
+  RefAttributes,
+} from "react";
 import type { LiquidGlassHandle } from "liquid-glass-web-react";
 
 export {
@@ -14,6 +19,7 @@ type BaseLiquidGlassProps = ComponentProps<typeof import("liquid-glass-web-react
 export type SquircleLiquidGlassProps = BaseLiquidGlassProps & {
   shape?: "rounded" | "squircle";
   squircleExponent?: number;
+  refractionTarget?: ReactNode;
 };
 
 export const LiquidGlass: ForwardRefExoticComponent<
