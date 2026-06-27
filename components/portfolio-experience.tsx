@@ -191,6 +191,12 @@ export default function PortfolioExperience() {
       <ParallaxBackdrop />
       <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
       <Header onNavigate={goToScreen} />
+      <SectionNavigator
+        activeScreen={activeScreen}
+        screenCount={screenCount}
+        glassHeight={glassSettings.height}
+        onNavigate={goToScreen}
+      />
       <PageContent
         activeScreen={activeScreen}
         onNavigate={goToScreen}
@@ -215,6 +221,62 @@ export default function PortfolioExperience() {
         }
       />
     </main>
+  );
+}
+
+function getScreenLabel(screen: number) {
+  if (screen === 0) return "Home";
+  if (screen === 1) return "Selected work";
+
+  const projectIndex = screen - 2;
+  if (projectIndex >= 0 && projectIndex < projects.length) {
+    return projects[projectIndex]?.title ?? `Project ${projectIndex + 1}`;
+  }
+
+  if (screen === projects.length + 2) return "Practice";
+  if (screen === projects.length + 3) return "Contact";
+  return `Section ${screen + 1}`;
+}
+
+function SectionNavigator({
+  activeScreen,
+  screenCount,
+  glassHeight,
+  onNavigate,
+}: {
+  activeScreen: number;
+  screenCount: number;
+  glassHeight: number;
+  onNavigate: (screen: number) => void;
+}) {
+  return (
+    <nav
+      aria-label="Portfolio sections"
+      className="section-navigator"
+      style={{ "--glass-height": `${glassHeight}px` } as CSSProperties}
+    >
+      <ol className="section-navigator-list">
+        {Array.from({ length: screenCount }, (_, screen) => {
+          const isActive = screen === activeScreen;
+          const label = getScreenLabel(screen);
+
+          return (
+            <li key={screen}>
+              <button
+                type="button"
+                aria-label={`Go to ${label}`}
+                aria-current={isActive ? "step" : undefined}
+                className="section-navigator-button"
+                onClick={() => onNavigate(screen)}
+              >
+                <span className="section-navigator-mark" />
+                <span className="sr-only">{label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 

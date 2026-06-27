@@ -155,6 +155,68 @@
     transition: var(--screen-transition, none);
   }
 
+  .section-navigator {
+    position: fixed;
+    left: clamp(0.65rem, 1.6vw, 1.4rem);
+    top: 50%;
+    z-index: 45;
+    transform: translateY(-50%);
+  }
+
+  .section-navigator-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+    align-items: flex-start;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .section-navigator-button {
+    display: flex;
+    width: 4.25rem;
+    height: 0.82rem;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .section-navigator-mark {
+    display: block;
+    width: 0.78rem;
+    height: 0.2rem;
+    border-radius: 999px;
+    background: rgba(244, 241, 234, 0.28);
+    transition:
+      width 180ms ease,
+      background-color 180ms ease,
+      opacity 180ms ease,
+      transform 180ms ease;
+  }
+
+  .section-navigator-button:hover .section-navigator-mark,
+  .section-navigator-button:focus-visible .section-navigator-mark {
+    width: 1.9rem;
+    background: rgba(244, 241, 234, 0.7);
+  }
+
+  .section-navigator-button:focus-visible {
+    outline: 0;
+  }
+
+  .section-navigator-button:focus-visible .section-navigator-mark {
+    box-shadow: 0 0 0 3px rgba(215, 255, 99, 0.24);
+  }
+
+  .section-navigator-button[aria-current="step"] .section-navigator-mark {
+    width: 3.6rem;
+    background: #f4f1ea;
+    opacity: 1;
+  }
+
   section[data-glass-context] {
     height: 100svh;
     min-height: 100svh;
@@ -754,6 +816,42 @@
   }
 
   @media (max-width: 639px) {
+    .section-navigator {
+      left: 50%;
+      top: auto;
+      bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--glass-height, 104px) + 0.9rem);
+      transform: translateX(-50%);
+    }
+
+    .section-navigator-list {
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .section-navigator-button {
+      width: 0.9rem;
+      height: 2.6rem;
+      justify-content: center;
+    }
+
+    .section-navigator-mark {
+      width: 0.2rem;
+      height: 0.78rem;
+    }
+
+    .section-navigator-button:hover .section-navigator-mark,
+    .section-navigator-button:focus-visible .section-navigator-mark {
+      width: 0.2rem;
+      height: 1.45rem;
+    }
+
+    .section-navigator-button[aria-current="step"] .section-navigator-mark {
+      width: 0.2rem;
+      height: 2.35rem;
+    }
+
     .hero-glass {
       --glass-inset: 7px;
       height: auto;
