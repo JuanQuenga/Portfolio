@@ -38,9 +38,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-display-family: "Space Grotesk", "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-display-family: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: "Montserrat", ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
@@ -161,32 +161,6 @@
     touch-action: pan-y;
   }
 
-  .portfolio-stage::before,
-  .portfolio-stage::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .portfolio-stage::before {
-    z-index: 1;
-    background:
-      linear-gradient(90deg, rgba(2, 2, 3, 0.98) 0%, rgba(2, 2, 3, 0.9) 42%, rgba(2, 2, 3, 0.5) 68%, rgba(2, 2, 3, 0.2) 100%),
-      radial-gradient(ellipse 42% 72% at 104% 45%, rgba(78, 229, 255, 0.38) 0%, rgba(78, 229, 255, 0.16) 36%, transparent 72%),
-      radial-gradient(ellipse 34% 58% at 98% 64%, rgba(215, 255, 99, 0.18) 0%, rgba(215, 255, 99, 0.08) 38%, transparent 76%);
-    filter: saturate(1.08);
-    transform: translate3d(calc(var(--parallax-x) * -0.8), calc(var(--parallax-y) * -0.55), 0);
-    transition: transform 180ms ease-out;
-  }
-
-  .portfolio-stage::after {
-    z-index: 2;
-    background: radial-gradient(ellipse 76% 58% at 74% 88%, rgba(244, 241, 234, 0.055), transparent 62%);
-    transform: translate3d(calc(var(--parallax-x) * 0.45), calc(var(--parallax-y) * 0.35), 0);
-    transition: transform 220ms ease-out;
-  }
-
   .portfolio-track {
     will-change: transform;
   }
@@ -195,7 +169,7 @@
     contain: layout paint;
     will-change: transform;
     backface-visibility: hidden;
-    transform: translate3d(0, var(--screen-y, 0), 0);
+    transform: translate3d(var(--screen-x, 0), var(--screen-y, 0), 0);
     transition: var(--screen-transition, none);
   }
 
@@ -341,11 +315,31 @@
   }
 
   .shader-backdrop {
-    position: relative;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-color: #020203;
+  }
+
+  .shader-backdrop__canvas {
+    position: absolute;
+    left: -14vw;
+    top: -14vh;
+    z-index: 1;
+    width: 128vw !important;
+    height: 128vh !important;
+    min-width: 128vw;
+    min-height: 128vh;
+    display: block;
+  }
+
+  .shader-backdrop__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
     background:
-      radial-gradient(ellipse 70% 90% at 104% 42%, rgba(78, 229, 255, 0.34), transparent 62%),
-      radial-gradient(ellipse 54% 76% at 92% 58%, rgba(215, 255, 99, 0.22), transparent 66%),
-      #020203;
+      linear-gradient(90deg, rgba(2, 2, 3, 0.52) 0%, rgba(2, 2, 3, 0.28) 42%, rgba(2, 2, 3, 0.14) 100%);
+    pointer-events: none;
   }
 
   .shader-backdrop__scrim {
@@ -353,8 +347,9 @@
     inset: 0;
     z-index: 3;
     background:
-      radial-gradient(ellipse 78% 76% at 74% 48%, rgba(2, 2, 3, 0.18) 0%, rgba(2, 2, 3, 0.08) 42%, transparent 72%),
-      linear-gradient(90deg, rgba(2, 2, 3, 0.24) 0%, rgba(2, 2, 3, 0.04) 42%, rgba(2, 2, 3, 0.04) 100%);
+      radial-gradient(ellipse 42% 72% at 92% 45%, rgba(78, 229, 255, 0.14) 0%, rgba(78, 229, 255, 0.05) 38%, transparent 72%),
+      radial-gradient(ellipse 34% 58% at 88% 62%, rgba(215, 255, 99, 0.1) 0%, rgba(215, 255, 99, 0.04) 38%, transparent 76%),
+      linear-gradient(90deg, rgba(2, 2, 3, 0.18) 0%, rgba(2, 2, 3, 0.04) 46%, transparent 100%);
     pointer-events: none;
   }
 
@@ -363,8 +358,8 @@
     inset: 0;
     z-index: 4;
     background:
-      radial-gradient(ellipse 98% 88% at 50% 44%, transparent 48%, rgba(2, 2, 3, 0.28) 100%),
-      linear-gradient(180deg, rgba(2, 2, 3, 0.12) 0%, transparent 16%, transparent 84%, rgba(2, 2, 3, 0.2) 100%);
+      radial-gradient(ellipse 98% 88% at 50% 44%, transparent 52%, rgba(2, 2, 3, 0.22) 100%),
+      linear-gradient(180deg, rgba(2, 2, 3, 0.1) 0%, transparent 16%, transparent 84%, rgba(2, 2, 3, 0.16) 100%);
     pointer-events: none;
   }
 
@@ -387,6 +382,8 @@
     min-height: var(--glass-height);
     border-radius: var(--glass-radius);
     corner-shape: squircle;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     border: 1px solid rgba(244, 241, 234, 0.24);
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.006) 52%, rgba(255, 255, 255, 0.025)),
@@ -502,6 +499,8 @@
     overflow: hidden;
     border-radius: var(--glass-radius);
     corner-shape: squircle;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     border: 1px solid rgba(244, 241, 234, 0.2);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.28),
@@ -530,6 +529,8 @@
     overflow: hidden;
     border-radius: calc(var(--project-shot-radius) - var(--project-shot-padding));
     corner-shape: squircle;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
   }
 
   .project-liquid-stage > [data-liquid-glass],
@@ -545,9 +546,11 @@
     z-index: 35;
     width: min(var(--hero-glass-width), calc(100vw - 2rem));
     max-width: calc(100vw - 2rem);
-    --glass-radius: 1.75rem;
+    --glass-radius: 2.75rem;
     corner-shape: squircle;
-    overflow: visible;
+    overflow: hidden;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     padding-inline: 0;
   }
 
@@ -559,7 +562,7 @@
 
   .project-glass-bar:hover,
   .project-glass-bar:focus-within {
-    --glass-radius: 2rem;
+    --glass-radius: 3.1rem;
     height: calc(var(--glass-height) * 1.06) !important;
     min-height: calc(var(--glass-height) * 1.06) !important;
     padding-inline: 0;
@@ -625,7 +628,29 @@
     corner-shape: inherit;
   }
 
+  @supports not (corner-shape: squircle) {
+    .liquid-glass,
+    .hero-glass,
+    .project-glass-bar {
+      border-radius: calc(var(--glass-radius) * 1.18);
+    }
+
+    .project-shot,
+    .glass-frame.project-shot {
+      border-radius: calc(var(--project-shot-radius) * 1.08);
+    }
+
+    .project-shot img,
+    .project-liquid-stage {
+      border-radius: calc((var(--project-shot-radius) - var(--project-shot-padding)) * 1.08);
+    }
+  }
+
   @media (max-width: 639px) {
+    .portfolio-stage {
+      touch-action: pan-x;
+    }
+
     .project-screen {
       align-items: stretch;
       padding: 0 1rem;
@@ -834,6 +859,8 @@
     position: relative;
     overflow: hidden;
     border-radius: 2.75rem;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     border: 1px solid rgba(244, 241, 234, 0.22);
     background:
       linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035)),

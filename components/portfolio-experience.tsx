@@ -34,7 +34,6 @@ import {
 import { HeroTitle } from "@/components/hero-title";
 import { PortfolioStageBackground } from "@/components/portfolio-stage-background";
 import { Slider } from "@/components/ui/slider";
-import { usePointerParallax } from "@/hooks/use-pointer-parallax";
 
 const projects = [
   {
@@ -130,11 +129,11 @@ export default function PortfolioExperience() {
   const [showBackdropControls, setShowBackdropControls] = useState(false);
   const stageRef = useRef<HTMLElement | null>(null);
   const isCompactViewport = useCompactViewport();
-  usePointerParallax(stageRef);
   const screenCount = projects.length + 4;
   const { activeScreen, screenTransitionPair, goToScreen } = useVirtualScreens(
     screenCount,
     stageRef,
+    isCompactViewport,
   );
   const activeProjectIndex =
     activeScreen >= 2 && activeScreen < 2 + projects.length
@@ -170,6 +169,7 @@ export default function PortfolioExperience() {
       <PageContent
         activeScreen={activeScreen}
         screenTransitionPair={screenTransitionPair}
+        isHorizontal={isCompactViewport}
         onNavigate={goToScreen}
       />
       <SharedGlassBar
@@ -281,11 +281,13 @@ function PageContent({
   mirror = false,
   activeScreen = 0,
   screenTransitionPair = null,
+  isHorizontal = false,
   onNavigate,
 }: {
   mirror?: boolean;
   activeScreen?: number;
   screenTransitionPair?: [number, number] | null;
+  isHorizontal?: boolean;
   onNavigate?: (screen: number) => void;
 }) {
   const maxScreen = projects.length + 3;
@@ -305,7 +307,12 @@ function PageContent({
           className="portfolio-screen absolute inset-0"
           style={
             {
-              "--screen-y": `calc(${(screen - activeScreen) * 100}svh + var(--drag-offset, 0px))`,
+              "--screen-x": isHorizontal
+                ? `calc(${(screen - activeScreen) * 100}vw + var(--drag-offset, 0px))`
+                : "0px",
+              "--screen-y": isHorizontal
+                ? "0px"
+                : `calc(${(screen - activeScreen) * 100}svh + var(--drag-offset, 0px))`,
             } as CSSProperties
           }
         >
@@ -352,19 +359,15 @@ function ScreenContent({
 
 const screenTransition = "transform 580ms cubic-bezier(0.22, 1, 0.36, 1)";
 const screenTransitionMs = 580;
-const screenInputLockMs = 240;
-const residualWheelQuietMs = 120;
-const residualWheelBreakoutDelta = 110;
-const residualWheelGrowthFactor = 1.35;
-const wheelPreviewThreshold = 6;
-const wheelCommitThreshold = 430;
+const wheelCommitThreshold = 120;
 const wheelPreviewDamping = 0.86;
-const wheelPreviewLimitRatio = 0.72;
-const wheelRestMs = 180;
+const touchPreviewLimitRatio = 0.42;
+const wheelRestMs = 140;
 
 function useVirtualScreens(
   screenCount: number,
   stageRef: RefObject<HTMLElement | null>,
+  isHorizontal: boolean,
 ) {
   const [activeScreen, setActiveScreen] = useState(0);
   const [screenTransitionPair, setScreenTransitionPair] = useState<
@@ -372,7 +375,9 @@ function useVirtualScreens(
   >(null);
   const activeScreenRef = useRef(activeScreen);
   const dragOffsetFrame = useRef<number | undefined>(undefined);
+  const programmaticTransitionFrame = useRef<number | undefined>(undefined);
   const pendingDragOffset = useRef(0);
+  const navigationTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     activeScreenRef.current = activeScreen;
@@ -382,16 +387,16 @@ function useVirtualScreens(
     let wheelTotal = 0;
     let wheelTimer: number | undefined;
     let transitionTimer: number | undefined;
-    let residualWheelTimer: number | undefined;
     let isTransitioning = false;
-    let isAbsorbingResidualWheel = false;
-    let residualWheelDirection: -1 | 1 = 1;
-    let residualWheelMagnitude = 0;
-    let touchStartY: number | undefined;
-    let lastTouchY: number | undefined;
+    let transitionDirection: -1 | 1 | null = null;
+    let queuedReverseWheelTotal = 0;
+    let touchStartPosition: number | undefined;
+    let lastTouchPosition: number | undefined;
 
     const getBoundedOffset = (delta: number) => {
-      const limit = window.innerHeight * wheelPreviewLimitRatio;
+      const limit =
+        (isHorizontal ? window.innerWidth : window.innerHeight) *
+        touchPreviewLimitRatio;
       return Math.max(-limit, Math.min(limit, -delta * wheelPreviewDamping));
     };
 
@@ -420,36 +425,14 @@ function useVirtualScreens(
       stageRef.current?.style.setProperty("--drag-offset", `${offset}px`);
     };
 
-    const releaseResidualWheel = () => {
-      if (isTransitioning) return;
-      isAbsorbingResidualWheel = false;
-      residualWheelTimer = undefined;
-      residualWheelMagnitude = 0;
-      wheelTotal = 0;
-    };
-
     const resetWheelGesture = () => {
       wheelTotal = 0;
-      isAbsorbingResidualWheel = false;
-      residualWheelMagnitude = 0;
       if (wheelTimer) window.clearTimeout(wheelTimer);
-      if (residualWheelTimer) {
-        window.clearTimeout(residualWheelTimer);
-        residualWheelTimer = undefined;
-      }
       setScreenTransition(screenTransition);
       setDragOffsetNow(0);
     };
 
-    const scheduleResidualWheelRelease = () => {
-      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
-      residualWheelTimer = window.setTimeout(
-        releaseResidualWheel,
-        residualWheelQuietMs,
-      );
-    };
-
-    const go = (direction: -1 | 1, triggerMagnitude = 0) => {
+    const go = (direction: -1 | 1) => {
       if (isTransitioning) return;
       const nextScreen = Math.max(
         0,
@@ -462,11 +445,13 @@ function useVirtualScreens(
       }
 
       isTransitioning = true;
-      isAbsorbingResidualWheel = false;
-      residualWheelDirection = direction;
-      residualWheelMagnitude = triggerMagnitude;
-      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
+      transitionDirection = direction;
+      queuedReverseWheelTotal = 0;
       if (transitionTimer) window.clearTimeout(transitionTimer);
+      if (navigationTimer.current) {
+        window.clearTimeout(navigationTimer.current);
+        navigationTimer.current = undefined;
+      }
       setScreenTransition(screenTransition);
       setScreenTransitionPair([activeScreenRef.current, nextScreen]);
       flushSync(() => {
@@ -477,16 +462,49 @@ function useVirtualScreens(
       wheelTotal = 0;
       transitionTimer = window.setTimeout(() => {
         isTransitioning = false;
+        transitionDirection = null;
         setScreenTransitionPair(null);
-        isAbsorbingResidualWheel = true;
-        scheduleResidualWheelRelease();
+
+        if (Math.abs(queuedReverseWheelTotal) >= wheelCommitThreshold) {
+          const queuedDirection = queuedReverseWheelTotal > 0 ? 1 : -1;
+          queuedReverseWheelTotal = 0;
+          go(queuedDirection);
+          return;
+        }
+
+        queuedReverseWheelTotal = 0;
       }, screenTransitionMs);
     };
 
     const handleWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
-      const direction = event.deltaY > 0 ? 1 : -1;
-      const magnitude = Math.abs(event.deltaY);
+      const rawDelta = isHorizontal
+        ? Math.abs(event.deltaX) > Math.abs(event.deltaY)
+          ? event.deltaX
+          : event.deltaY
+        : event.deltaY;
+
+      if (!isHorizontal && Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
+        return;
+      }
+
+      const delta =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? rawDelta * 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? rawDelta * (isHorizontal ? window.innerWidth : window.innerHeight)
+            : rawDelta;
+      const direction = delta > 0 ? 1 : -1;
+
+      if (isTransitioning) {
+        if (transitionDirection !== null && direction !== transitionDirection) {
+          if (Math.sign(queuedReverseWheelTotal) !== Math.sign(delta)) {
+            queuedReverseWheelTotal = 0;
+          }
+          queuedReverseWheelTotal += delta;
+        }
+        return;
+      }
+
       const currentScreen = activeScreenRef.current;
 
       if (
@@ -497,83 +515,41 @@ function useVirtualScreens(
         return;
       }
 
-      if (isTransitioning || isAbsorbingResidualWheel) {
+      if (Math.sign(wheelTotal) !== Math.sign(delta)) {
         wheelTotal = 0;
-        if (wheelTimer) window.clearTimeout(wheelTimer);
-        if (isAbsorbingResidualWheel) {
-          const isFreshSwipe =
-            direction === residualWheelDirection &&
-            magnitude >= residualWheelBreakoutDelta &&
-            magnitude >= residualWheelMagnitude * residualWheelGrowthFactor;
-
-          if (isFreshSwipe) {
-            releaseResidualWheel();
-          } else {
-            residualWheelDirection = direction;
-            residualWheelMagnitude = Math.max(magnitude, residualWheelMagnitude * 0.86);
-            scheduleResidualWheelRelease();
-            return;
-          }
-        } else {
-          residualWheelDirection = direction;
-          residualWheelMagnitude = Math.max(magnitude, residualWheelMagnitude);
-          return;
-        }
-      } else {
-        residualWheelMagnitude = magnitude;
-        residualWheelDirection = direction;
       }
 
-      if (residualWheelTimer) {
-        window.clearTimeout(residualWheelTimer);
-        residualWheelTimer = undefined;
-      }
-
-      if (isTransitioning) {
-        return;
-      }
-
-      wheelTotal += event.deltaY;
+      wheelTotal += delta;
       const wheelDistance = Math.abs(wheelTotal);
-      if (wheelDistance < wheelPreviewThreshold) {
-        if (wheelTimer) window.clearTimeout(wheelTimer);
-        wheelTimer = window.setTimeout(() => {
-          wheelTotal = 0;
-        }, wheelRestMs);
-        return;
-      }
 
-      setScreenTransition("none");
-      setDragOffsetOnFrame(
-        getBoundedOffset(
-          wheelTotal - Math.sign(wheelTotal) * wheelPreviewThreshold,
-        ),
-      );
       if (wheelDistance >= wheelCommitThreshold) {
         if (wheelTimer) window.clearTimeout(wheelTimer);
-        go(wheelTotal > 0 ? 1 : -1, magnitude);
+        go(wheelTotal > 0 ? 1 : -1);
         return;
       }
+
       if (wheelTimer) window.clearTimeout(wheelTimer);
       wheelTimer = window.setTimeout(() => {
-        setScreenTransition(screenTransition);
-        setDragOffsetOnFrame(0);
         wheelTotal = 0;
       }, wheelRestMs);
     };
 
     const handleTouchStart = (event: TouchEvent) => {
       setScreenTransition("none");
-      touchStartY = event.touches[0]?.clientY;
-      lastTouchY = touchStartY;
+      const touch = event.touches[0];
+      touchStartPosition = isHorizontal ? touch?.clientX : touch?.clientY;
+      lastTouchPosition = touchStartPosition;
     };
 
     const handleTouchMove = (event: TouchEvent) => {
-      if (touchStartY === undefined) return;
+      if (touchStartPosition === undefined) return;
       if (isTransitioning) return;
-      lastTouchY = event.touches[0]?.clientY;
-      if (lastTouchY === undefined) return;
-      const delta = touchStartY - lastTouchY;
+      const touch = event.touches[0];
+      lastTouchPosition = isHorizontal ? touch?.clientX : touch?.clientY;
+      if (lastTouchPosition === undefined) return;
+      const delta = isHorizontal
+        ? lastTouchPosition - touchStartPosition
+        : touchStartPosition - lastTouchPosition;
       const direction = delta > 0 ? 1 : -1;
       const currentScreen = activeScreenRef.current;
 
@@ -590,17 +566,23 @@ function useVirtualScreens(
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
-      if (touchStartY === undefined) return;
-      const endY = event.changedTouches[0]?.clientY ?? lastTouchY;
-      if (endY === undefined) return;
-      const delta = touchStartY - endY;
-      if (Math.abs(delta) >= window.innerHeight * 0.28) go(delta > 0 ? 1 : -1);
+      if (touchStartPosition === undefined) return;
+      const touch = event.changedTouches[0];
+      const endPosition =
+        (isHorizontal ? touch?.clientX : touch?.clientY) ?? lastTouchPosition;
+      if (endPosition === undefined) return;
+      const delta = isHorizontal
+        ? endPosition - touchStartPosition
+        : touchStartPosition - endPosition;
+      const commitDistance =
+        (isHorizontal ? window.innerWidth : window.innerHeight) * 0.28;
+      if (Math.abs(delta) >= commitDistance) go(delta > 0 ? 1 : -1);
       else {
         setScreenTransition(screenTransition);
         setDragOffsetOnFrame(0);
       }
-      touchStartY = undefined;
-      lastTouchY = undefined;
+      touchStartPosition = undefined;
+      lastTouchPosition = undefined;
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -623,9 +605,16 @@ function useVirtualScreens(
     return () => {
       if (wheelTimer) window.clearTimeout(wheelTimer);
       if (transitionTimer) window.clearTimeout(transitionTimer);
-      if (residualWheelTimer) window.clearTimeout(residualWheelTimer);
+      if (navigationTimer.current) {
+        window.clearTimeout(navigationTimer.current);
+        navigationTimer.current = undefined;
+      }
       if (dragOffsetFrame.current !== undefined) {
         window.cancelAnimationFrame(dragOffsetFrame.current);
+      }
+      if (programmaticTransitionFrame.current !== undefined) {
+        window.cancelAnimationFrame(programmaticTransitionFrame.current);
+        programmaticTransitionFrame.current = undefined;
       }
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
@@ -633,7 +622,7 @@ function useVirtualScreens(
       window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [screenCount]);
+  }, [isHorizontal, screenCount]);
 
   return {
     activeScreen,
@@ -641,13 +630,31 @@ function useVirtualScreens(
     goToScreen: (screen: number) => {
       const nextScreen = Math.max(0, Math.min(screenCount - 1, screen));
       if (nextScreen === activeScreenRef.current) return;
+      if (navigationTimer.current) {
+        window.clearTimeout(navigationTimer.current);
+        navigationTimer.current = undefined;
+      }
+      if (programmaticTransitionFrame.current !== undefined) {
+        window.cancelAnimationFrame(programmaticTransitionFrame.current);
+        programmaticTransitionFrame.current = undefined;
+      }
+      const currentScreen = activeScreenRef.current;
       pendingDragOffset.current = 0;
-      setScreenTransitionPair([activeScreenRef.current, nextScreen]);
-      activeScreenRef.current = nextScreen;
-      stageRef.current?.style.setProperty("--screen-transition", screenTransition);
+      stageRef.current?.style.setProperty("--screen-transition", "none");
       stageRef.current?.style.setProperty("--drag-offset", "0px");
-      setActiveScreen(nextScreen);
-      window.setTimeout(() => setScreenTransitionPair(null), screenTransitionMs);
+      flushSync(() => {
+        setScreenTransitionPair([currentScreen, nextScreen]);
+      });
+      programmaticTransitionFrame.current = window.requestAnimationFrame(() => {
+        programmaticTransitionFrame.current = undefined;
+        activeScreenRef.current = nextScreen;
+        stageRef.current?.style.setProperty("--screen-transition", screenTransition);
+        setActiveScreen(nextScreen);
+      });
+      navigationTimer.current = window.setTimeout(() => {
+        setScreenTransitionPair(null);
+        navigationTimer.current = undefined;
+      }, screenTransitionMs);
     },
   };
 }
@@ -733,7 +740,7 @@ function Hero({
             <HeroTitle lines={heroNameLines} />
             <div className="hero-kicker-wrap mt-5 w-fit max-w-[22rem] sm:max-w-full">
               <p
-                className="hero-kicker font-mono text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white"
+                className="hero-kicker text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white"
                 data-text="<Full Stack Product Engineer />"
                 aria-label="Full Stack Product Engineer"
               >
@@ -812,7 +819,7 @@ function SharedGlassBar({
       ) : (
         <div className="hero-glass-content flex h-full items-center gap-4 px-5 py-4 text-base font-semibold text-[#f4f1ea]/78 sm:gap-6 sm:px-7">
           <div className="flex min-w-0 shrink-0 items-center gap-4">
-            <div className="glass-button flex size-14 shrink-0 items-center justify-center font-mono text-lg font-black leading-none text-white">
+            <div className="glass-button flex size-14 shrink-0 items-center justify-center text-lg font-black leading-none text-white">
               JQ
             </div>
             <div className="min-w-0">
@@ -870,7 +877,7 @@ function BackdropControlPopover({
             Background
           </h2>
           <p className="mt-1 text-xs font-semibold text-white/44">
-            Smooth field
+            Warp · Passion
           </p>
         </div>
         <div className="flex items-center gap-2">
