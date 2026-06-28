@@ -11,9 +11,9 @@ export const WARP_COLORS = [
   "#071114",
   "#0e2a32",
   "#1a5560",
-  "#2ec8d6",
-  "#4ee5ff",
-  "#d7ff63",
+  "#2299a5",
+  "#38c8d1",
+  "#a8cf62",
 ] as const;
 
 export const backdropShaderShapes = ["checks", "stripes", "edge"] as const;
@@ -25,14 +25,14 @@ export const backdropShaderPreset = {
   speed: 0.42,
   scale: passionPreset.params.scale,
   rotation: passionPreset.params.rotation,
-  proportion: 0.64,
+  proportion: 0.56,
   softness: passionPreset.params.softness,
   distortion: passionPreset.params.distortion,
   swirl: passionPreset.params.swirl,
   swirlIterations: passionPreset.params.swirlIterations,
   shapeScale: passionPreset.params.shapeScale,
-  offsetX: 0.42,
-  offsetY: 0,
+  offsetX: 0.34,
+  offsetY: 0.12,
 } as const satisfies {
   shape: BackdropShaderShape;
   speed: number;
