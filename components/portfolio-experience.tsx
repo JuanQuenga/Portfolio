@@ -24,8 +24,17 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { HeatmapBackdrop } from "@/components/heatmap-backdrop";
+import {
+  backdropShaderControls,
+  backdropShaderPreset,
+  backdropShaderShapes,
+  type BackdropShaderSettings,
+  type BackdropShaderShape,
+} from "@/components/shader-backdrop";
+import { HeroTitle } from "@/components/hero-title";
+import { PortfolioStageBackground } from "@/components/portfolio-stage-background";
 import { Slider } from "@/components/ui/slider";
+import { usePointerParallax } from "@/hooks/use-pointer-parallax";
 
 const projects = [
   {
@@ -92,38 +101,9 @@ const heroNameLines = ["Juan", "Quenga"];
 const heroGlassPreset = {
   width: 1600,
   height: 104,
-  radius: 52,
-  refraction: 18,
-  blur: 0.46,
-  saturation: 1.22,
-  contrast: 1.08,
-  opacity: 0,
-  sheen: 0.11,
-  edge: 0.18,
-  shadow: 0.12,
-};
+} as const;
 
 type HeroGlassSettings = typeof heroGlassPreset;
-
-const glassControls = [
-  { key: "width", label: "Width", min: 520, max: 1920, step: 1 },
-  { key: "height", label: "Height", min: 80, max: 220, step: 1 },
-  { key: "radius", label: "Radius", min: 20, max: 96, step: 1 },
-  { key: "refraction", label: "Refraction", min: 0, max: 28, step: 1 },
-  { key: "blur", label: "Blur", min: 0, max: 4, step: 0.1 },
-  { key: "saturation", label: "Saturation", min: 0.8, max: 1.8, step: 0.01 },
-  { key: "contrast", label: "Contrast", min: 0.8, max: 1.4, step: 0.01 },
-  { key: "opacity", label: "Tint", min: 0, max: 0.18, step: 0.005 },
-  { key: "sheen", label: "Sheen", min: 0, max: 0.35, step: 0.005 },
-  { key: "edge", label: "Edge", min: 0, max: 0.35, step: 0.005 },
-  { key: "shadow", label: "Shadow", min: 0, max: 0.6, step: 0.01 },
-] satisfies Array<{
-  key: keyof HeroGlassSettings;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-}>;
 
 const capabilities = [
   {
@@ -144,11 +124,13 @@ const capabilities = [
 ];
 
 export default function PortfolioExperience() {
-  const [glassSettings, setGlassSettings] =
-    useState<HeroGlassSettings>(heroGlassPreset);
-  const [showGlassControls, setShowGlassControls] = useState(false);
+  const [backdropSettings, setBackdropSettings] = useState<BackdropShaderSettings>({
+    ...backdropShaderPreset,
+  });
+  const [showBackdropControls, setShowBackdropControls] = useState(false);
   const stageRef = useRef<HTMLElement | null>(null);
   const isCompactViewport = useCompactViewport();
+  usePointerParallax(stageRef);
   const screenCount = projects.length + 4;
   const { activeScreen, screenTransitionPair, goToScreen } = useVirtualScreens(
     screenCount,
@@ -164,7 +146,7 @@ export default function PortfolioExperience() {
     [activeProjectIndex],
   );
   const renderedGlassHeight = getRenderedGlassHeight(
-    glassSettings.height,
+    heroGlassPreset.height,
     isCompactViewport,
     activeProject !== null,
   );
@@ -174,11 +156,10 @@ export default function PortfolioExperience() {
       ref={stageRef}
       className="portfolio-stage relative h-screen isolate overflow-hidden bg-[#020203] text-[#f4f1ea]"
     >
-      <HeatmapBackdrop />
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020203] to-transparent" />
+      <PortfolioStageBackground settings={backdropSettings} />
       <Header
         onNavigate={goToScreen}
-        onOpenControls={() => setShowGlassControls(true)}
+        onOpenControls={() => setShowBackdropControls(true)}
       />
       <SectionNavigator
         activeScreen={activeScreen}
@@ -193,16 +174,19 @@ export default function PortfolioExperience() {
       />
       <SharedGlassBar
         project={activeProject}
-        settings={glassSettings}
+        settings={heroGlassPreset}
         renderedHeight={renderedGlassHeight}
       />
-      <GlassControlPopover
-        open={showGlassControls}
-        settings={glassSettings}
-        onClose={() => setShowGlassControls(false)}
-        onReset={() => setGlassSettings(heroGlassPreset)}
+      <BackdropControlPopover
+        open={showBackdropControls}
+        settings={backdropSettings}
+        onClose={() => setShowBackdropControls(false)}
+        onReset={() => setBackdropSettings({ ...backdropShaderPreset })}
         onChange={(key, value) =>
-          setGlassSettings((current) => ({ ...current, [key]: value }))
+          setBackdropSettings((current) => ({ ...current, [key]: value }))
+        }
+        onShapeChange={(shape) =>
+          setBackdropSettings((current) => ({ ...current, shape }))
         }
       />
     </main>
@@ -681,7 +665,7 @@ function Header({
         type="button"
         onClick={onOpenControls}
         className="glass-button inline-flex size-12 items-center justify-center transition hover:border-[#d7ff63]/70 hover:text-[#d7ff63]"
-        aria-label="Tune glass"
+        aria-label="Tune background"
       >
         <SlidersHorizontal className="size-5" />
       </button>
@@ -746,7 +730,7 @@ function Hero({
       <div className="mx-auto flex w-full max-w-[1600px] items-end">
         <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(220px,0.28fr)] lg:items-end">
           <Reveal>
-            <GlitchTitle lines={heroNameLines} />
+            <HeroTitle lines={heroNameLines} />
             <div className="hero-kicker-wrap mt-5 w-fit max-w-[22rem] sm:max-w-full">
               <p
                 className="hero-kicker font-mono text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white"
@@ -856,16 +840,21 @@ function SharedGlassBar({
   );
 }
 
-function GlassControlPopover({
+function BackdropControlPopover({
   open,
   settings,
   onChange,
+  onShapeChange,
   onClose,
   onReset,
 }: {
   open: boolean;
-  settings: HeroGlassSettings;
-  onChange: (key: keyof HeroGlassSettings, value: number) => void;
+  settings: BackdropShaderSettings;
+  onChange: (
+    key: (typeof backdropShaderControls)[number]["key"],
+    value: number,
+  ) => void;
+  onShapeChange: (shape: BackdropShaderShape) => void;
   onClose: () => void;
   onReset: () => void;
 }) {
@@ -878,10 +867,10 @@ function GlassControlPopover({
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
-            Glass Controls
+            Background
           </h2>
           <p className="mt-1 text-xs font-semibold text-white/44">
-            Homepage fixed bar
+            Smooth field
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -889,7 +878,7 @@ function GlassControlPopover({
             type="button"
             onClick={onReset}
             className="glass-control-icon"
-            aria-label="Reset glass"
+            aria-label="Reset background"
           >
             <RotateCcw className="size-4" />
           </button>
@@ -897,7 +886,7 @@ function GlassControlPopover({
             type="button"
             onClick={onClose}
             className="glass-control-icon"
-            aria-label="Close glass controls"
+            aria-label="Close background controls"
           >
             <X className="size-4" />
           </button>
@@ -905,14 +894,40 @@ function GlassControlPopover({
       </div>
 
       <div className="max-h-[min(34rem,calc(100svh-13rem))] space-y-3 overflow-y-auto pr-1">
-        {glassControls.map((control) => (
+        <fieldset className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
+          <legend className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.08em] text-white/62">
+            Shape
+          </legend>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {backdropShaderShapes.map((shape) => {
+              const isActive = settings.shape === shape;
+
+              return (
+                <button
+                  key={shape}
+                  type="button"
+                  onClick={() => onShapeChange(shape)}
+                  className={
+                    isActive
+                      ? "rounded-xl border border-[#d7ff63] bg-[#d7ff63] px-2 py-2 text-[0.62rem] font-black uppercase tracking-[0.08em] text-black transition"
+                      : "rounded-xl border border-white/12 bg-white/[0.04] px-2 py-2 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-white/62 transition hover:border-white/24 hover:text-white"
+                  }
+                >
+                  {shape}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        {backdropShaderControls.map((control) => (
           <GlassControlSlider
             key={control.key}
             label={control.label}
             min={control.min}
             max={control.max}
             step={control.step}
-            value={settings[control.key] as number}
+            value={settings[control.key]}
             onChange={(value) => onChange(control.key, value)}
           />
         ))}
@@ -960,60 +975,6 @@ function GlassControlSlider({
   );
 }
 
-function GlitchTitle({ lines }: { lines: string[] }) {
-  return (
-    <h1
-      className="hero-name hero-title font-black uppercase leading-[0.82] tracking-normal text-[#f4f1ea]"
-      aria-label={lines.join(" ")}
-    >
-      <span aria-hidden="true">
-        {lines.map((line, lineIndex) => (
-          <span className="block" key={line}>
-            {[...line].map((letter, letterIndex) => {
-              const characterIndex = lineIndex * 7 + letterIndex;
-
-              return (
-                <span
-                  className="glitch-letter"
-                  data-letter={letter}
-                  key={`${line}-${letter}-${letterIndex}`}
-                  style={
-                    {
-                      "--glitch-delay": `${characterIndex * -0.17}s`,
-                      "--glitch-x-sm":
-                        letterIndex % 2 === 0 ? "0.025em" : "-0.025em",
-                      "--glitch-x-sm-neg":
-                        letterIndex % 2 === 0 ? "-0.018em" : "0.018em",
-                      "--glitch-cyan-idle":
-                        letterIndex % 2 === 0 ? "0.035em" : "-0.035em",
-                      "--glitch-cyan-far":
-                        letterIndex % 2 === 0 ? "0.11em" : "-0.11em",
-                      "--glitch-cyan-mid":
-                        letterIndex % 2 === 0 ? "-0.06em" : "0.06em",
-                      "--glitch-cyan-low":
-                        letterIndex % 2 === 0 ? "0.09em" : "-0.09em",
-                      "--glitch-magenta-idle":
-                        letterIndex % 2 === 0 ? "-0.03em" : "0.03em",
-                      "--glitch-magenta-far":
-                        letterIndex % 2 === 0 ? "-0.1em" : "0.1em",
-                      "--glitch-magenta-mid":
-                        letterIndex % 2 === 0 ? "0.055em" : "-0.055em",
-                      "--glitch-magenta-low":
-                        letterIndex % 2 === 0 ? "-0.08em" : "0.08em",
-                    } as CSSProperties
-                  }
-                >
-                  {letter}
-                </span>
-              );
-            })}
-          </span>
-        ))}
-      </span>
-    </h1>
-  );
-}
-
 function WorkIntro({
   mirror = false,
 }: {
@@ -1050,7 +1011,7 @@ function WorkIntro({
           <h2 className="text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
             Recent builds.
           </h2>
-          <p className="mt-6 max-w-2xl text-base font-semibold leading-7 text-[#f4f1ea]/58 sm:text-lg sm:leading-8">
+          <p className="mt-6 max-w-2xl text-base font-semibold leading-7 text-[#f4f1ea]/70 sm:text-lg sm:leading-8">
             Full-stack React interfaces with type-safe data flows, modern
             tools like TanStack and Tailwind, and AI-aware workflows built
             around Cursor, Codex, and agentic development.
