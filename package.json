@@ -11,6 +11,7 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
+    "@cornerkit/core": "^1.2.0",
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "^3.10.0",
     "@ogtirth/liquid-glass-oss": "^0.1.0",

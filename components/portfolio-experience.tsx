@@ -1,5 +1,6 @@
 "use client";
 
+import CornerKit, { RendererTier, type SquircleConfig } from "@cornerkit/core";
 import {
   useEffect,
   useLayoutEffect,
@@ -152,7 +153,7 @@ export default function PortfolioExperience() {
     isCompactViewport,
     activeProject !== null,
   );
-  useSquircleMasks(stageRef, [
+  useCornerKitSquircles(stageRef, [
     activeScreen,
     isCompactViewport,
     renderedGlassHeight,
@@ -221,7 +222,7 @@ function useCompactViewport() {
   return isCompactViewport;
 }
 
-function useSquircleMasks(
+function useCornerKitSquircles(
   rootRef: RefObject<HTMLElement | null>,
   dependencies: ReadonlyArray<unknown>,
 ) {
@@ -229,6 +230,7 @@ function useSquircleMasks(
     const root = rootRef.current;
     if (!root || typeof ResizeObserver === "undefined") return;
 
+    const cornerKit = new CornerKit({ smoothing: 0.82 });
     const managedElements = new Set<HTMLElement>();
     const snapshots = new WeakMap<
       HTMLElement,
@@ -237,9 +239,13 @@ function useSquircleMasks(
     let frame: number | undefined;
     let refreshTimer: number | undefined;
 
-    const getRadius = (element: HTMLElement) => {
+    const getConfig = (element: HTMLElement): SquircleConfig => {
       const styles = window.getComputedStyle(element);
-      return Number.parseFloat(styles.borderTopLeftRadius) || 0;
+      return {
+        radius: Number.parseFloat(styles.borderTopLeftRadius) || 0,
+        smoothing: 0.82,
+        tier: RendererTier.CLIPPATH,
+      };
     };
 
     const applyElement = (element: HTMLElement) => {
@@ -250,27 +256,27 @@ function useSquircleMasks(
         return;
       }
 
-      const radius = getRadius(element);
+      element.dataset.cornerkitManaged = "true";
+
+      const config = getConfig(element);
       const snapshot = snapshots.get(element);
 
       if (
         snapshot &&
-        Math.abs(snapshot.radius - radius) < 0.5 &&
+        Math.abs(snapshot.radius - config.radius) < 0.5 &&
         Math.abs(snapshot.width - width) < 1 &&
         Math.abs(snapshot.height - height) < 1
       ) {
         return;
       }
 
-      const mask = `url("${buildSquircleMask(width, height, radius)}")`;
-      element.style.webkitMaskImage = mask;
-      element.style.maskImage = mask;
-      element.style.webkitMaskSize = "100% 100%";
-      element.style.maskSize = "100% 100%";
-      element.style.webkitMaskRepeat = "no-repeat";
-      element.style.maskRepeat = "no-repeat";
+      element.style.webkitMaskImage = "none";
+      element.style.maskImage = "none";
 
-      snapshots.set(element, { height, radius, width });
+      if (cornerKit.inspect(element)) cornerKit.update(element, config);
+      else cornerKit.apply(element, config);
+
+      snapshots.set(element, { height, radius: config.radius, width });
       managedElements.add(element);
     };
 
@@ -328,66 +334,13 @@ function useSquircleMasks(
       root.removeEventListener("transitionend", scheduleRefresh, true);
       window.removeEventListener("resize", scheduleRefresh);
       managedElements.forEach((element) => {
+        delete element.dataset.cornerkitManaged;
         element.style.webkitMaskImage = "";
         element.style.maskImage = "";
-        element.style.webkitMaskSize = "";
-        element.style.maskSize = "";
-        element.style.webkitMaskRepeat = "";
-        element.style.maskRepeat = "";
       });
+      cornerKit.destroy();
     };
   }, [rootRef, ...dependencies]);
-}
-
-function buildSquircleMask(width: number, height: number, radius: number) {
-  const path = buildSquirclePath(width, height, radius);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><path fill="white" d="${path}"/></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-function buildSquirclePath(width: number, height: number, radius: number) {
-  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
-  if (r <= 0) return `M 0 0 H ${width} V ${height} H 0 Z`;
-
-  const pointsPerCorner = 14;
-  const exponent = 0.5;
-  const points: string[] = [
-    `M ${formatNumber(r)} 0`,
-    `L ${formatNumber(width - r)} 0`,
-  ];
-
-  const addCorner = (
-    centerX: number,
-    centerY: number,
-    startAngle: number,
-    endAngle: number,
-  ) => {
-    for (let index = 1; index <= pointsPerCorner; index += 1) {
-      const angle =
-        startAngle + ((endAngle - startAngle) * index) / pointsPerCorner;
-      const radians = (angle * Math.PI) / 180;
-      const cos = Math.cos(radians);
-      const sin = Math.sin(radians);
-      const x = centerX + r * Math.sign(cos) * Math.abs(cos) ** exponent;
-      const y = centerY + r * Math.sign(sin) * Math.abs(sin) ** exponent;
-      points.push(`L ${formatNumber(x)} ${formatNumber(y)}`);
-    }
-  };
-
-  addCorner(width - r, r, -90, 0);
-  points.push(`L ${formatNumber(width)} ${formatNumber(height - r)}`);
-  addCorner(width - r, height - r, 0, 90);
-  points.push(`L ${formatNumber(r)} ${formatNumber(height)}`);
-  addCorner(r, height - r, 90, 180);
-  points.push(`L 0 ${formatNumber(r)}`);
-  addCorner(r, r, 180, 270);
-  points.push("Z");
-
-  return points.join(" ");
-}
-
-function formatNumber(value: number) {
-  return `${Math.round(value * 100) / 100}`;
 }
 
 function getRenderedGlassHeight(

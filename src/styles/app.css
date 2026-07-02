@@ -656,19 +656,19 @@
   }
 
   @supports not (corner-shape: squircle) {
-    .liquid-glass,
-    .hero-glass,
-    .project-glass-bar {
+    .liquid-glass:not([data-cornerkit-managed]),
+    .hero-glass:not([data-cornerkit-managed]),
+    .project-glass-bar:not([data-cornerkit-managed]) {
       border-radius: calc(var(--glass-radius) * 1.18);
     }
 
-    .project-shot,
-    .glass-frame.project-shot {
+    .project-shot:not([data-cornerkit-managed]),
+    .glass-frame.project-shot:not([data-cornerkit-managed]) {
       border-radius: calc(var(--project-shot-radius) * 1.08);
     }
 
-    .project-shot img,
-    .project-liquid-stage {
+    .project-shot img:not([data-cornerkit-managed]),
+    .project-liquid-stage:not([data-cornerkit-managed]) {
       border-radius: calc((var(--project-shot-radius) - var(--project-shot-padding)) * 1.08);
     }
   }
