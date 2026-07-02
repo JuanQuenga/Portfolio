@@ -102,6 +102,9 @@ const heroGlassPreset = {
   height: 104,
 } as const;
 
+const squircleSelector =
+  ".liquid-glass, .project-shot, .project-liquid-stage, .glass-frame.project-shot";
+
 type HeroGlassSettings = typeof heroGlassPreset;
 
 const capabilities = [
@@ -149,6 +152,12 @@ export default function PortfolioExperience() {
     isCompactViewport,
     activeProject !== null,
   );
+  useSquircleMasks(stageRef, [
+    activeScreen,
+    isCompactViewport,
+    renderedGlassHeight,
+    showBackdropControls,
+  ]);
 
   return (
     <main
@@ -210,6 +219,175 @@ function useCompactViewport() {
   }, []);
 
   return isCompactViewport;
+}
+
+function useSquircleMasks(
+  rootRef: RefObject<HTMLElement | null>,
+  dependencies: ReadonlyArray<unknown>,
+) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+
+    const managedElements = new Set<HTMLElement>();
+    const snapshots = new WeakMap<
+      HTMLElement,
+      { height: number; radius: number; width: number }
+    >();
+    let frame: number | undefined;
+    let refreshTimer: number | undefined;
+
+    const getRadius = (element: HTMLElement) => {
+      const styles = window.getComputedStyle(element);
+      return Number.parseFloat(styles.borderTopLeftRadius) || 0;
+    };
+
+    const applyElement = (element: HTMLElement) => {
+      const width = element.offsetWidth;
+      const height = element.offsetHeight;
+
+      if (!element.isConnected || width < 1 || height < 1) {
+        return;
+      }
+
+      const radius = getRadius(element);
+      const snapshot = snapshots.get(element);
+
+      if (
+        snapshot &&
+        Math.abs(snapshot.radius - radius) < 0.5 &&
+        Math.abs(snapshot.width - width) < 1 &&
+        Math.abs(snapshot.height - height) < 1
+      ) {
+        return;
+      }
+
+      const mask = `url("${buildSquircleMask(width, height, radius)}")`;
+      element.style.webkitMaskImage = mask;
+      element.style.maskImage = mask;
+      element.style.webkitMaskSize = "100% 100%";
+      element.style.maskSize = "100% 100%";
+      element.style.webkitMaskRepeat = "no-repeat";
+      element.style.maskRepeat = "no-repeat";
+
+      snapshots.set(element, { height, radius, width });
+      managedElements.add(element);
+    };
+
+    const refresh = () => {
+      frame = undefined;
+      root.querySelectorAll<HTMLElement>(squircleSelector).forEach(applyElement);
+
+      managedElements.forEach((element) => {
+        if (!element.isConnected || !root.contains(element)) {
+          managedElements.delete(element);
+        }
+      });
+    };
+
+    const scheduleRefresh = () => {
+      if (frame !== undefined) return;
+      frame = window.requestAnimationFrame(refresh);
+    };
+
+    const scheduleTransitionRefresh = () => {
+      scheduleRefresh();
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(scheduleRefresh, 280);
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleRefresh);
+    resizeObserver.observe(root);
+
+    const mutationObserver = new MutationObserver(scheduleRefresh);
+    mutationObserver.observe(root, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ["class", "style"],
+    });
+
+    root.addEventListener("pointerenter", scheduleTransitionRefresh, true);
+    root.addEventListener("pointerleave", scheduleTransitionRefresh, true);
+    root.addEventListener("focusin", scheduleTransitionRefresh);
+    root.addEventListener("focusout", scheduleTransitionRefresh);
+    root.addEventListener("transitionend", scheduleRefresh, true);
+    window.addEventListener("resize", scheduleRefresh);
+
+    scheduleRefresh();
+
+    return () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      root.removeEventListener("pointerenter", scheduleTransitionRefresh, true);
+      root.removeEventListener("pointerleave", scheduleTransitionRefresh, true);
+      root.removeEventListener("focusin", scheduleTransitionRefresh);
+      root.removeEventListener("focusout", scheduleTransitionRefresh);
+      root.removeEventListener("transitionend", scheduleRefresh, true);
+      window.removeEventListener("resize", scheduleRefresh);
+      managedElements.forEach((element) => {
+        element.style.webkitMaskImage = "";
+        element.style.maskImage = "";
+        element.style.webkitMaskSize = "";
+        element.style.maskSize = "";
+        element.style.webkitMaskRepeat = "";
+        element.style.maskRepeat = "";
+      });
+    };
+  }, [rootRef, ...dependencies]);
+}
+
+function buildSquircleMask(width: number, height: number, radius: number) {
+  const path = buildSquirclePath(width, height, radius);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><path fill="white" d="${path}"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function buildSquirclePath(width: number, height: number, radius: number) {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  if (r <= 0) return `M 0 0 H ${width} V ${height} H 0 Z`;
+
+  const pointsPerCorner = 14;
+  const exponent = 0.5;
+  const points: string[] = [
+    `M ${formatNumber(r)} 0`,
+    `L ${formatNumber(width - r)} 0`,
+  ];
+
+  const addCorner = (
+    centerX: number,
+    centerY: number,
+    startAngle: number,
+    endAngle: number,
+  ) => {
+    for (let index = 1; index <= pointsPerCorner; index += 1) {
+      const angle =
+        startAngle + ((endAngle - startAngle) * index) / pointsPerCorner;
+      const radians = (angle * Math.PI) / 180;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+      const x = centerX + r * Math.sign(cos) * Math.abs(cos) ** exponent;
+      const y = centerY + r * Math.sign(sin) * Math.abs(sin) ** exponent;
+      points.push(`L ${formatNumber(x)} ${formatNumber(y)}`);
+    }
+  };
+
+  addCorner(width - r, r, -90, 0);
+  points.push(`L ${formatNumber(width)} ${formatNumber(height - r)}`);
+  addCorner(width - r, height - r, 0, 90);
+  points.push(`L ${formatNumber(r)} ${formatNumber(height)}`);
+  addCorner(r, height - r, 90, 180);
+  points.push(`L 0 ${formatNumber(r)}`);
+  addCorner(r, r, 180, 270);
+  points.push("Z");
+
+  return points.join(" ");
+}
+
+function formatNumber(value: number) {
+  return `${Math.round(value * 100) / 100}`;
 }
 
 function getRenderedGlassHeight(
@@ -865,10 +1043,43 @@ function BackdropControlPopover({
   onClose: () => void;
   onReset: () => void;
 }) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        popoverRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      onClose();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, open]);
+
   if (!open) return null;
 
   return (
     <div
+      ref={popoverRef}
       className="glass-control-popover fixed z-50 w-[min(25rem,calc(100vw-2rem))] rounded-[1.35rem] border border-white/12 bg-[#09090b]/92 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -900,7 +1111,7 @@ function BackdropControlPopover({
         </div>
       </div>
 
-      <div className="max-h-[min(34rem,calc(100svh-13rem))] space-y-3 overflow-y-auto pr-1">
+      <div className="glass-control-scroll max-h-[min(34rem,calc(100svh-13rem))] space-y-3 overflow-y-auto pr-1">
         <fieldset className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
           <legend className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.08em] text-white/62">
             Shape
