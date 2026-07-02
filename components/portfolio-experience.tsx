@@ -105,6 +105,8 @@ const heroGlassPreset = {
 
 const squircleSelector =
   ".liquid-glass, .project-shot, .project-liquid-stage, .glass-frame.project-shot";
+const cornerKitSmoothing = 0.6;
+const cornerKitFallbackRadiusScale = 0.64;
 
 type HeroGlassSettings = typeof heroGlassPreset;
 
@@ -230,7 +232,8 @@ function useCornerKitSquircles(
     const root = rootRef.current;
     if (!root || typeof ResizeObserver === "undefined") return;
 
-    const cornerKit = new CornerKit({ smoothing: 0.82 });
+    const cornerKit = new CornerKit({ smoothing: cornerKitSmoothing });
+    const hasNativeCornerShape = CSS.supports("corner-shape: squircle");
     const managedElements = new Set<HTMLElement>();
     const snapshots = new WeakMap<
       HTMLElement,
@@ -241,9 +244,12 @@ function useCornerKitSquircles(
 
     const getConfig = (element: HTMLElement): SquircleConfig => {
       const styles = window.getComputedStyle(element);
+      const cssRadius = Number.parseFloat(styles.borderTopLeftRadius) || 0;
       return {
-        radius: Number.parseFloat(styles.borderTopLeftRadius) || 0,
-        smoothing: 0.82,
+        radius: hasNativeCornerShape
+          ? cssRadius
+          : cssRadius * cornerKitFallbackRadiusScale,
+        smoothing: cornerKitSmoothing,
         tier: RendererTier.CLIPPATH,
       };
     };
