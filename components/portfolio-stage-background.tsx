@@ -13,7 +13,7 @@ export function PortfolioStageBackground({
   return (
     <>
       <ShaderBackdrop settings={settings} />
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-[12] h-32 bg-gradient-to-b from-[#020203] to-transparent" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[12] h-32 bg-gradient-to-b from-void to-transparent" />
     </>
   );
 }

@@ -5,7 +5,7 @@ type HeroTitleProps = {
 export function HeroTitle({ lines }: HeroTitleProps) {
   return (
     <h1
-      className="hero-name hero-title font-display font-extrabold uppercase leading-[0.82] tracking-normal text-[#f4f1ea]"
+      className="hero-name hero-title font-display font-extrabold uppercase leading-[0.82] tracking-normal text-ink"
       aria-label={lines.join(" ")}
     >
       <span aria-hidden="true">

@@ -9,14 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as GlassLabRouteImport } from './routes/glass-lab'
 import { Route as IndexRouteImport } from './routes/index'
 
-const GlassLabRoute = GlassLabRouteImport.update({
-  id: '/glass-lab',
-  path: '/glass-lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -25,39 +19,28 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/glass-lab': typeof GlassLabRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/glass-lab': typeof GlassLabRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/glass-lab': typeof GlassLabRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/glass-lab'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/glass-lab'
-  id: '__root__' | '/' | '/glass-lab'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  GlassLabRoute: typeof GlassLabRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/glass-lab': {
-      id: '/glass-lab'
-      path: '/glass-lab'
-      fullPath: '/glass-lab'
-      preLoaderRoute: typeof GlassLabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -70,7 +53,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  GlassLabRoute: GlassLabRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

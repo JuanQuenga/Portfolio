@@ -63,26 +63,6 @@ export type BackdropShaderSettings = {
   offsetY: number;
 };
 
-export const backdropShaderControls = [
-  { key: "speed", label: "Speed", min: 0, max: 1, step: 0.01 },
-  { key: "scale", label: "Scale", min: 0.5, max: 4, step: 0.01 },
-  { key: "proportion", label: "Proportion", min: 0, max: 1, step: 0.01 },
-  { key: "softness", label: "Softness", min: 0, max: 1.5, step: 0.01 },
-  { key: "distortion", label: "Distortion", min: 0, max: 1, step: 0.01 },
-  { key: "swirl", label: "Swirl", min: 0, max: 1, step: 0.01 },
-  { key: "swirlIterations", label: "Swirl Passes", min: 0, max: 20, step: 1 },
-  { key: "shapeScale", label: "Pattern Scale", min: 0, max: 1, step: 0.01 },
-  { key: "rotation", label: "Rotation", min: 0, max: 360, step: 1 },
-  { key: "offsetX", label: "Offset X", min: -1, max: 1, step: 0.01 },
-  { key: "offsetY", label: "Offset Y", min: -1, max: 1, step: 0.01 },
-] as const satisfies Array<{
-  key: Exclude<keyof BackdropShaderSettings, "shape">;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-}>;
-
 function getViewportSize() {
   if (typeof window === "undefined") {
     return { width: 1440, height: 900 };

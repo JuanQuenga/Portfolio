@@ -5,13 +5,13 @@
   "type": "module",
   "sideEffects": false,
   "scripts": {
-    "build": "vite build && node scripts/flatten-css-layers.mjs && tsc --noEmit",
+    "build": "vite build && tsc --noEmit",
     "dev": "vite dev",
+    "deploy:vercel": "vercel build --prod --yes && node scripts/fix-vercel-output-routes.mjs && vercel deploy --prebuilt --prod --yes",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@cornerkit/core": "^1.2.0",
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "^3.10.0",
     "@ogtirth/liquid-glass-oss": "^0.1.0",
@@ -74,7 +74,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
-    "lightningcss": "1.32.0",
     "nitro": "^3.0.260311-beta",
     "tailwindcss": "^4.2.2",
     "tw-animate-css": "1.3.3",
