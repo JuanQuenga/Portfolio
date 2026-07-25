@@ -59,14 +59,14 @@ const projects = [
   },
 ];
 
-// Screens render in a fixed order: home, work intro, one per project, then
-// approach and contact. Deriving the indices from this order keeps the offset
+// Screens render in a fixed order: home, approach, work intro, one per
+// project, then contact. Deriving the indices from this order keeps the offset
 // math in one place instead of sprinkling `+ 2` / `+ 3` literals everywhere.
 const HOME_SCREEN = 0;
-const WORK_SCREEN = 1;
-const FIRST_PROJECT_SCREEN = 2;
-const PRACTICE_SCREEN = FIRST_PROJECT_SCREEN + projects.length;
-const CONTACT_SCREEN = PRACTICE_SCREEN + 1;
+const PRACTICE_SCREEN = 1;
+const WORK_SCREEN = 2;
+const FIRST_PROJECT_SCREEN = 3;
+const CONTACT_SCREEN = FIRST_PROJECT_SCREEN + projects.length;
 const SCREEN_COUNT = CONTACT_SCREEN + 1;
 
 const heroSkills = ["React", "Next", "TanStack", "Convex"];
@@ -99,7 +99,7 @@ export default function PortfolioExperience() {
   const isCompactViewport = useCompactViewport();
   const { activeScreen, goToScreen } = useNativeScreens(SCREEN_COUNT, stageRef);
   const activeProjectIndex =
-    activeScreen >= FIRST_PROJECT_SCREEN && activeScreen < PRACTICE_SCREEN
+    activeScreen >= FIRST_PROJECT_SCREEN && activeScreen < CONTACT_SCREEN
       ? activeScreen - FIRST_PROJECT_SCREEN
       : null;
   const activeProject = useMemo(
