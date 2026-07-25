@@ -580,14 +580,7 @@ function ProjectScreen({
     >
       <div className="project-screen-layout mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
         <div className="project-mobile-meta sm:hidden">
-          <div className="flex items-center justify-between gap-4 text-[0.68rem] font-black uppercase tracking-[0.18em] text-signal">
-            <span>
-              {String(index + 1).padStart(2, "0")} /{" "}
-              {String(projects.length).padStart(2, "0")}
-            </span>
-            <span>{project.domain}</span>
-          </div>
-          <h2 className="mt-2.5 text-[clamp(2rem,11vw,3.35rem)] font-black uppercase leading-[0.88] tracking-normal text-white">
+          <h2 className="text-[clamp(2rem,11vw,3.35rem)] font-black uppercase leading-[0.88] tracking-normal text-white">
             {project.title}
           </h2>
           <p className="mt-2 max-w-[24rem] text-sm font-semibold leading-6 text-ink/66">
