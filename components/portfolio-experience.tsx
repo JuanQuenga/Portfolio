@@ -123,6 +123,12 @@ export default function PortfolioExperience() {
     <main
       ref={stageRef}
       className="portfolio-stage relative isolate bg-void text-ink"
+      style={
+        {
+          "--glass-height": `${renderedGlassHeight}px`,
+          "--mobile-dock-space": `${renderedGlassHeight + 44}px`,
+        } as CSSProperties
+      }
     >
       <PortfolioStageBackground settings={backdropShaderPreset} />
       <Header onNavigate={goToScreen} />
@@ -221,7 +227,16 @@ function getRenderedGlassHeight(
   hasProject: boolean,
 ) {
   if (!isCompactViewport) return baseHeight;
-  return Math.round(baseHeight * (hasProject ? 0.96 : 1.12));
+  // Portrait dock is a compact bottom bar, not the wide landscape pill.
+  return hasProject ? 64 : 68;
+}
+
+function formatHost(href: string) {
+  try {
+    return new URL(href).hostname.replace(/^www\./, "");
+  } catch {
+    return href;
+  }
 }
 
 function getScreenLabel(screen: number) {
@@ -343,7 +358,8 @@ function Header({ onNavigate }: { onNavigate: (screen: number) => void }) {
           }}
           className="transition hover:text-white"
         >
-          My Work
+          <span className="sm:hidden">Work</span>
+          <span className="hidden sm:inline">My Work</span>
         </a>
         <a
           href="#contact"
@@ -374,7 +390,7 @@ function Hero({ onNavigate }: { onNavigate?: (screen: number) => void }) {
     <section
       id="top"
       data-glass-context="home"
-      className="relative flex min-h-[100svh] px-4 pb-[clamp(8rem,17svh,12rem)] pt-28 sm:px-7"
+      className="hero-mobile relative flex min-h-[100svh] px-4 pb-[clamp(8rem,17svh,12rem)] pt-28 sm:px-7"
     >
       <div className="mx-auto flex w-full max-w-[1600px] items-end">
         <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(220px,0.28fr)] lg:items-end">
@@ -391,6 +407,18 @@ function Hero({ onNavigate }: { onNavigate?: (screen: number) => void }) {
                 <span className="text-signal">/&gt;</span>
               </p>
             </div>
+            <a
+              href="#work"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate?.(WORK_SCREEN);
+              }}
+              className="hero-mobile-cta sm:hidden"
+            >
+              <span className="hero-mobile-cta-rule" aria-hidden="true" />
+              View work
+              <ArrowRight className="size-3.5 text-signal" />
+            </a>
           </div>
 
           <div className="hidden lg:block">
@@ -437,10 +465,15 @@ function SharedGlassBar({
       {project ? (
         <div className="hero-glass-content project-glass-content grid h-full gap-5 px-5 py-4 text-base font-semibold text-ink/78 sm:px-7 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
           <div className="project-glass-text min-w-0">
-            <div className="project-glass-title truncate text-2xl font-black uppercase leading-none text-white">
+            {/* Portrait already shows the title in-page, so the dock carries the
+                destination instead of repeating it. */}
+            <div className="project-glass-host truncate sm:hidden">
+              {formatHost(project.href)}
+            </div>
+            <div className="project-glass-title hidden truncate text-2xl font-black uppercase leading-none text-white sm:block">
               {project.title}
             </div>
-            <p className="project-glass-summary mt-2 max-w-3xl truncate leading-6 text-ink/62">
+            <p className="project-glass-summary mt-2 hidden max-w-3xl truncate leading-6 text-ink/62 sm:block">
               {project.summary}
             </p>
           </div>
@@ -475,14 +508,10 @@ function SharedGlassBar({
             </div>
           </div>
 
-          <p className="mobile-glass-copy hidden min-w-0 flex-1 leading-7 text-ink/62 sm:block">
-            I love building solutions for stores, local businesses, and
-            internal teams.
-          </p>
-
-          <div className="hero-glass-location ml-auto flex shrink-0 items-center gap-3 truncate text-ink/72">
+          <div className="hero-glass-location ml-auto flex shrink-0 items-center gap-2 truncate text-ink/72 sm:gap-3">
             <MapPin className="size-5 shrink-0 text-signal" />
-            Southeast Michigan
+            <span className="sm:hidden">SE Michigan</span>
+            <span className="hidden sm:inline">Southeast Michigan</span>
           </div>
         </div>
       )}
@@ -495,9 +524,9 @@ function WorkIntro() {
     <section
       id="work"
       data-glass-context="work"
-      className="relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
+      className="work-mobile relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
     >
-      <div className="mx-auto grid w-full max-w-7xl content-center gap-10 border-b border-ink/12 pb-32 pt-28 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:gap-16 lg:pb-36 lg:pt-24">
+      <div className="work-mobile-inner mx-auto grid w-full max-w-7xl content-center gap-10 border-b border-ink/12 pb-32 pt-28 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:gap-16 lg:pb-36 lg:pt-24">
         <div className="max-w-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/48">
             My Work
@@ -506,14 +535,14 @@ function WorkIntro() {
             Recent projects.
           </h2>
           <p className="mt-6 max-w-lg text-base font-semibold leading-7 text-ink/70 sm:text-lg sm:leading-8">
-            Scanner tools, game companions, storefronts, and social apps —
-            React interfaces with real product data.
+            I love building solutions for stores, local businesses, and
+            internal teams.
           </p>
           <p className="mt-4 text-sm font-semibold text-ink/48">
             {projects.length} projects · scroll for each one
           </p>
         </div>
-        <ol className="grid gap-0 border-t border-ink/12">
+        <ol className="work-mobile-list grid gap-0 border-t border-ink/12">
           {projects.map((project, index) => (
             <li
               key={project.title}
@@ -552,13 +581,16 @@ function ProjectScreen({
       <div className="project-screen-layout mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
         <div className="project-mobile-meta sm:hidden">
           <div className="flex items-center justify-between gap-4 text-[0.68rem] font-black uppercase tracking-[0.18em] text-signal">
-            <span>Project {String(index + 1).padStart(2, "0")}</span>
-            <span>{heroSkills[0]}</span>
+            <span>
+              {String(index + 1).padStart(2, "0")} /{" "}
+              {String(projects.length).padStart(2, "0")}
+            </span>
+            <span>{project.domain}</span>
           </div>
-          <h2 className="mt-3 text-[clamp(2rem,11vw,3.35rem)] font-black uppercase leading-[0.88] tracking-normal text-white">
+          <h2 className="mt-2.5 text-[clamp(2rem,11vw,3.35rem)] font-black uppercase leading-[0.88] tracking-normal text-white">
             {project.title}
           </h2>
-          <p className="mt-3 max-w-[24rem] text-sm font-semibold leading-6 text-ink/66">
+          <p className="mt-2 max-w-[24rem] text-sm font-semibold leading-6 text-ink/66">
             {project.summary}
           </p>
         </div>
@@ -587,9 +619,9 @@ function Practice() {
     <section
       id="practice"
       data-glass-context="practice"
-      className="relative flex min-h-[100svh] items-center px-4 py-16 sm:px-6 lg:py-24"
+      className="practice-mobile relative flex min-h-[100svh] items-center px-4 py-16 sm:px-6 lg:py-24"
     >
-      <div className="mx-auto grid w-full max-w-7xl content-center gap-10 border-y border-ink/12 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end lg:gap-16 lg:py-16">
+      <div className="practice-mobile-inner mx-auto grid w-full max-w-7xl content-center gap-10 border-y border-ink/12 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end lg:gap-16 lg:py-16">
         <div className="max-w-xl">
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink/48">
             Approach
@@ -627,9 +659,9 @@ function Contact() {
     <section
       id="contact"
       data-glass-context="contact"
-      className="relative flex min-h-[100svh] items-center px-4 py-16 sm:px-6 lg:py-24"
+      className="contact-mobile relative flex min-h-[100svh] items-center px-4 py-16 sm:px-6 lg:py-24"
     >
-      <div className="mx-auto grid w-full max-w-7xl gap-8 border-t border-ink/12 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div className="contact-mobile-inner mx-auto grid w-full max-w-7xl gap-8 border-t border-ink/12 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink/48">
             Contact

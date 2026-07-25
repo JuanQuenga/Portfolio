@@ -650,140 +650,438 @@
     }
   }
 
+  /* Portrait mobile: recompose the landscape stage into a stacked reading
+     flow. Every section is exactly one viewport so a single short flick pages
+     to the next one instead of scrolling through an oversized section. */
   @media (max-width: 639px) {
     .portfolio-stage {
-      touch-action: pan-x;
+      touch-action: pan-y;
+      scroll-snap-type: y mandatory;
+      scroll-padding-bottom: calc(
+        max(0.75rem, env(safe-area-inset-bottom)) + var(--mobile-dock-space, 7.5rem)
+      );
+    }
+
+    .portfolio-stage > header {
+      padding: max(0.65rem, env(safe-area-inset-top)) 0.85rem 0;
+    }
+
+    .portfolio-stage > header .size-12 {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .header-nav {
+      --glass-height: 2.65rem;
+      gap: 0;
+    }
+
+    .header-nav:hover,
+    .header-nav:focus-within {
+      --glass-height: 2.65rem;
+      --glass-radius: calc(var(--glass-height) / 2);
+      padding-inline: 0.45rem;
+    }
+
+    .header-nav a {
+      min-width: 3.4rem;
+      padding-inline: 0.4rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+    }
+
+    .header-nav a:hover,
+    .header-nav a:focus-visible {
+      min-width: 3.4rem;
+      padding-inline: 0.4rem;
+      font-size: 0.62rem;
+      text-shadow: none;
+    }
+
+    .portfolio-stage > header .glass-button {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .portfolio-stage > header .glass-button .size-5 {
+      width: 1.05rem;
+      height: 1.05rem;
+    }
+
+    section[data-glass-context] {
+      height: 100svh;
+      min-height: 100svh;
+    }
+
+    .portfolio-screen {
+      height: 100svh;
+      min-height: 100svh;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+
+    .hero-mobile {
+      flex-direction: column;
+      justify-content: flex-end;
+      padding:
+        calc(max(0.65rem, env(safe-area-inset-top)) + 4.25rem)
+        1.1rem
+        calc(max(0.85rem, env(safe-area-inset-bottom)) + 7.25rem);
+    }
+
+    .hero-mobile .hero-title {
+      font-size: clamp(3.4rem, 18vw, 5.4rem);
+      max-width: none;
+      letter-spacing: -0.03em;
+    }
+
+    .hero-kicker-wrap {
+      max-width: 100%;
+    }
+
+    .hero-kicker {
+      font-size: clamp(0.92rem, 4.2vw, 1.15rem) !important;
+      line-height: 1.25;
+    }
+
+    .hero-mobile-cta {
+      display: inline-flex;
+      margin-top: 1.35rem;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgb(var(--ink-rgb) / 0.78);
+    }
+
+    .hero-mobile-cta-rule {
+      display: block;
+      width: 2.75rem;
+      height: 1px;
+      background: rgb(var(--signal-rgb) / 0.85);
+      transition: width 180ms ease;
+    }
+
+    .hero-mobile-cta:active .hero-mobile-cta-rule {
+      width: 3.6rem;
+    }
+
+    .work-mobile,
+    .practice-mobile,
+    .contact-mobile {
+      align-items: stretch;
+      justify-content: flex-start;
+      overflow: hidden;
+      padding:
+        calc(max(0.65rem, env(safe-area-inset-top)) + 4.25rem)
+        1.1rem
+        calc(max(0.85rem, env(safe-area-inset-bottom)) + 6.25rem);
+    }
+
+    .work-mobile-inner,
+    .practice-mobile-inner,
+    .contact-mobile-inner {
+      display: grid;
+      width: 100%;
+      max-width: 40rem;
+      max-height: 100%;
+      margin-inline: auto;
+      gap: 1.25rem;
+      border: 0;
+      padding: 0;
+      /* Sections are sized to fit one viewport; this only engages on very
+         short screens so nothing gets clipped. */
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+    }
+
+    .work-mobile-inner::-webkit-scrollbar,
+    .practice-mobile-inner::-webkit-scrollbar,
+    .contact-mobile-inner::-webkit-scrollbar {
+      display: none;
+    }
+
+    .work-mobile-inner h2,
+    .practice-mobile-inner h2,
+    .contact-mobile-inner h2 {
+      font-size: clamp(2.1rem, 9.5vw, 3rem);
+      line-height: 0.92;
+    }
+
+    .work-mobile-inner > div:first-child > p,
+    .practice-mobile-inner > div:first-child > p {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .work-mobile-list {
+      border-top: 1px solid rgb(var(--ink-rgb) / 0.14);
+    }
+
+    .work-mobile-list li {
+      grid-template-columns: 2rem minmax(0, 1fr) auto;
+      gap: 0.65rem;
+      padding-block: 0.62rem;
+    }
+
+    .work-mobile-list li span:nth-child(2) {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+      font-size: 0.92rem;
+      line-height: 1.2;
+    }
+
+    .practice-mobile-inner > div:last-child > div {
+      grid-template-columns: 1fr;
+      gap: 0.35rem;
+      padding-block: 0.8rem;
+    }
+
+    .practice-mobile-inner > div:last-child p {
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .contact-mobile-inner {
+      align-content: end;
+      gap: 1.75rem;
+    }
+
+    .contact-mobile-inner h2 {
+      font-size: clamp(2.6rem, 12vw, 3.6rem);
     }
 
     .project-screen {
       align-items: stretch;
       padding: 0 1rem;
+      overflow: hidden;
     }
 
     .project-screen-layout {
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: center;
-      gap: clamp(0.9rem, 2.6svh, 1.35rem);
-      padding-top: clamp(5.6rem, 13svh, 6.9rem);
-      padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 6.8rem);
+      display: grid;
+      grid-template-rows: auto auto;
+      align-content: center;
+      align-items: start;
+      justify-content: stretch;
+      gap: 1.15rem;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      padding-top: calc(max(0.65rem, env(safe-area-inset-top)) + 4.35rem);
+      padding-bottom: calc(
+        max(0.85rem, env(safe-area-inset-bottom)) + var(--mobile-dock-space, 7.5rem)
+      );
     }
 
     .project-mobile-meta {
-      width: min(100%, 28rem);
-      align-self: center;
+      width: 100%;
+      align-self: stretch;
+      flex: none;
+    }
+
+    .project-mobile-meta h2 {
+      font-size: clamp(1.85rem, 9vw, 2.6rem) !important;
+      line-height: 0.9 !important;
+    }
+
+    .project-mobile-meta p {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-size: 0.84rem !important;
+      line-height: 1.4 !important;
     }
 
     .project-shot {
-      width: min(100%, 38rem);
+      width: 100%;
+      max-width: none;
+      height: auto;
       max-height: none;
-      align-self: center;
-      flex-shrink: 0;
-      --project-shot-radius: clamp(1.15rem, 6vw, 1.75rem);
-      --project-shot-padding: 0.22rem;
+      min-height: 0;
+      align-self: start;
+      display: flex;
+      --project-shot-radius: clamp(1rem, 5vw, 1.45rem);
+      --project-shot-padding: 0.18rem;
     }
 
+    .project-shot > a {
+      display: block;
+      width: 100%;
+      min-height: 0;
+    }
+
+    /* Screenshots are 1440x900, so a 16:10 frame shows the whole landscape
+       capture instead of cropping it into a tall slice. */
     .project-shot img {
+      width: 100%;
+      height: auto;
       max-height: none;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      object-position: top center;
     }
 
     .section-navigator {
       right: auto;
       left: 50%;
       top: auto;
-      bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--glass-height, 104px) + 0.65rem);
+      bottom: calc(
+        max(0.75rem, env(safe-area-inset-bottom)) + var(--glass-height, 72px) + 0.45rem
+      );
       transform: translateX(-50%);
+      z-index: 46;
     }
 
     .section-navigator-list {
       flex-direction: row;
       align-items: center;
       justify-content: center;
-      gap: 0.35rem;
+      gap: 0.28rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgb(var(--ink-rgb) / 0.14);
+      background: rgb(var(--void-rgb) / 0.42);
+      backdrop-filter: blur(10px) saturate(1.15);
+      -webkit-backdrop-filter: blur(10px) saturate(1.15);
     }
 
     .section-navigator-button {
-      width: 0.9rem;
-      height: 2.6rem;
+      width: 1.15rem;
+      height: 1.15rem;
       justify-content: center;
     }
 
     .section-navigator-mark {
-      width: 0.2rem;
-      height: 0.78rem;
+      width: 0.34rem;
+      height: 0.34rem;
+      border-radius: 999px;
     }
 
     .section-navigator-button:hover .section-navigator-mark,
     .section-navigator-button:focus-visible .section-navigator-mark {
-      width: 0.2rem;
-      height: 1.45rem;
+      width: 0.5rem;
+      height: 0.5rem;
     }
 
     .section-navigator-button[aria-current="step"] .section-navigator-mark {
-      width: 0.2rem;
-      height: 2.35rem;
+      width: 1.05rem;
+      height: 0.34rem;
+      background: rgb(var(--signal-rgb));
     }
 
     .project-glass-bar {
-      padding: 0.8rem 1rem;
+      left: 0.85rem;
+      right: 0.85rem;
+      bottom: max(0.65rem, env(safe-area-inset-bottom));
+      width: auto;
+      max-width: none;
+      --glass-radius: 1.45rem;
+      padding: 0.55rem 0.7rem;
+    }
+
+    .project-glass-bar:hover,
+    .project-glass-bar:focus-within {
+      --glass-radius: 1.45rem;
+      height: var(--glass-height) !important;
+      min-height: var(--glass-height) !important;
+      padding-inline: 0.7rem;
     }
 
     .project-glass-bar .project-glass-content {
       align-content: center;
       align-items: center;
-      gap: 0;
-      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 0.75rem;
+      grid-template-columns: minmax(0, 1fr) auto !important;
       grid-template-rows: auto;
+      padding: 0 !important;
     }
 
     .project-glass-bar .project-glass-content .project-glass-text {
-      display: none;
+      display: block;
+      min-width: 0;
+    }
+
+    .project-glass-bar .project-glass-host {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.01em;
+      color: rgb(var(--ink-rgb) / 0.72);
     }
 
     .project-glass-bar .hero-glass-content:not(.project-glass-content) {
       flex-wrap: nowrap;
-      gap: 0.75rem;
+      gap: 0.65rem;
+      padding: 0 !important;
     }
 
     .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child {
       min-width: 0;
       flex: 1 1 auto;
+      gap: 0.65rem;
+    }
+
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) .glass-button {
+      width: 2.55rem;
+      height: 2.55rem;
+      font-size: 0.78rem;
     }
 
     .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child > div:last-child {
-      font-size: clamp(1rem, 4.8vw, 1.35rem);
-      line-height: 1.25;
-    }
-
-    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child > div:last-child > div:first-child {
-      font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+      font-size: 0.78rem;
       line-height: 1.2;
     }
 
-    .project-glass-bar .hero-glass-location {
-      font-size: 0.72rem;
+    .project-glass-bar .hero-glass-content:not(.project-glass-content) > div:first-child > div:last-child > div:first-child {
+      font-size: 0.95rem;
+      line-height: 1.15;
     }
 
-    .project-glass-bar .mobile-glass-copy {
-      display: none;
+    .project-glass-bar .hero-glass-location {
+      max-width: 5.5rem;
+      font-size: 0.62rem;
+      line-height: 1.2;
+      white-space: normal;
+      text-align: right;
+    }
+
+    .project-glass-bar .hero-glass-location .size-5 {
+      width: 0.95rem;
+      height: 0.95rem;
     }
 
     .project-glass-bar .project-glass-actions {
-      width: 100%;
-      justify-content: center;
+      width: auto;
+      justify-content: flex-end;
       align-self: center;
-      justify-self: stretch;
+      justify-self: end;
     }
 
     .project-glass-bar .glass-button-primary {
-      height: 3.35rem;
-      padding-inline: 1.55rem;
-      font-size: 0.74rem;
+      height: 2.65rem;
+      padding-inline: 1rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
     }
 
     .project-glass-bar .project-glass-actions .glass-button:not(.glass-button-primary) {
-      width: 3.35rem;
-      height: 3.35rem;
+      width: 2.65rem;
+      height: 2.65rem;
+    }
+
+    .shader-backdrop__canvas {
+      left: -28vw;
+      top: -18vh;
+      width: 156vw !important;
+      height: 136vh !important;
+      min-width: 156vw;
+      min-height: 136vh;
     }
   }
 
