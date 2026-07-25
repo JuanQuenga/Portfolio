@@ -17,7 +17,6 @@ import { PortfolioStageBackground } from "@/components/portfolio-stage-backgroun
 const projects = [
   {
     title: "Volt",
-    domain: "Capture",
     summary:
       "Scanner-first product capture with review flows for messy item data.",
     href: "https://volt-scanner.vercel.app/",
@@ -25,7 +24,6 @@ const projects = [
   },
   {
     title: "ClashCrown",
-    domain: "Games",
     summary:
       "A Clash Royale companion for lookup, comparison, and player tools.",
     href: "https://clashcrown.vercel.app/",
@@ -33,14 +31,12 @@ const projects = [
   },
   {
     title: "BrawlStats",
-    domain: "Games",
     summary: "Brawl Stars stats with profile lookup and readable player data.",
     href: "https://brawlstatsio.vercel.app/",
     screenshotSrc: "/screenshots/brawlstats.png",
   },
   {
     title: "Herman's Modern Bakery",
-    domain: "Commerce",
     summary:
       "A simple storefront for menu, hours, location, and quick mobile browsing.",
     href: "https://hermans.vercel.app",
@@ -48,7 +44,6 @@ const projects = [
   },
   {
     title: "Multi Auto",
-    domain: "Services",
     summary:
       "Responsive service screens for compact workflows and quick comparisons.",
     href: "https://multi-auto.vercel.app",
@@ -56,7 +51,6 @@ const projects = [
   },
   {
     title: "Piggies US",
-    domain: "Social",
     summary:
       "A social app with accounts, subscriptions, and live community screens.",
     href: "https://www.piggies.us/",
@@ -323,7 +317,7 @@ function ScreenContent({
   onNavigate?: (screen: number) => void;
 }) {
   if (screen === HOME_SCREEN) return <Hero onNavigate={onNavigate} />;
-  if (screen === WORK_SCREEN) return <WorkIntro />;
+  if (screen === WORK_SCREEN) return <WorkIntro onNavigate={onNavigate} />;
   if (screen === PRACTICE_SCREEN) return <Practice />;
   if (screen === CONTACT_SCREEN) return <Contact />;
 
@@ -519,7 +513,7 @@ function SharedGlassBar({
   );
 }
 
-function WorkIntro() {
+function WorkIntro({ onNavigate }: { onNavigate?: (screen: number) => void }) {
   return (
     <section
       id="work"
@@ -539,24 +533,23 @@ function WorkIntro() {
             internal teams.
           </p>
           <p className="mt-4 text-sm font-semibold text-ink/48">
-            {projects.length} projects · scroll for each one
+            {projects.length} projects
           </p>
         </div>
-        <ol className="work-mobile-list grid gap-0 border-t border-ink/12">
+        <ol className="work-project-list">
           {projects.map((project, index) => (
-            <li
-              key={project.title}
-              className="grid grid-cols-[2.5rem_1fr_auto] items-baseline gap-3 border-b border-ink/12 py-4 sm:grid-cols-[3rem_1fr_6.5rem] sm:gap-5"
-            >
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-signal">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="truncate text-sm font-bold uppercase tracking-[0.08em] text-white sm:text-base">
-                {project.title}
-              </span>
-              <span className="text-right text-xs font-semibold uppercase tracking-[0.1em] text-ink/52">
-                {project.domain}
-              </span>
+            <li key={project.title}>
+              <a
+                href={`#project-${index}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onNavigate?.(FIRST_PROJECT_SCREEN + index);
+                }}
+                className="work-project-link"
+              >
+                <span className="work-project-name">{project.title}</span>
+                <ArrowRight className="work-project-arrow size-4 shrink-0" />
+              </a>
             </li>
           ))}
         </ol>
@@ -574,6 +567,7 @@ function ProjectScreen({
 }) {
   return (
     <section
+      id={`project-${index}`}
       data-glass-context="project"
       data-project-index={index}
       className="project-screen relative flex h-[100svh] items-center px-4 py-10 sm:px-6"
