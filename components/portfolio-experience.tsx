@@ -10,7 +10,6 @@ import {
   type RefObject,
 } from "react";
 import { ArrowRight, ArrowUpRight, Github, MapPin } from "lucide-react";
-import { backdropShaderPreset } from "@/components/shader-backdrop";
 import { HeroTitle } from "@/components/hero-title";
 import { PortfolioStageBackground } from "@/components/portfolio-stage-background";
 
@@ -124,7 +123,7 @@ export default function PortfolioExperience() {
         } as CSSProperties
       }
     >
-      <PortfolioStageBackground settings={backdropShaderPreset} />
+      <PortfolioStageBackground scrollContainerRef={stageRef} />
       <Header onNavigate={goToScreen} />
       <SectionNavigator
         activeScreen={activeScreen}
@@ -479,7 +478,7 @@ function SharedGlassBar({
           <div className="project-glass-actions flex items-center gap-3 justify-self-end">
             <a
               href={project.href}
-              className="glass-button glass-button-primary inline-flex h-[3.25rem] items-center gap-2 px-5 text-xs font-bold uppercase tracking-[0.14em] transition hover:scale-[1.015]"
+              className="action-button glass-button glass-button-primary inline-flex h-[3.25rem] items-center gap-2 px-5 text-xs font-bold uppercase tracking-[0.14em] transition hover:scale-[1.015]"
             >
               Open
               <ArrowUpRight className="size-4" />
@@ -659,7 +658,7 @@ function Contact() {
         </div>
         <a
           href="mailto:juanquenga@gmail.com?subject=Let's work together&body=Hi Juan, I'd like to discuss a potential project with you."
-          className="glass-button glass-button-primary inline-flex h-12 w-fit items-center gap-3 px-5 text-sm font-bold uppercase tracking-[0.12em] transition hover:scale-[1.015]"
+          className="action-button glass-button glass-button-primary inline-flex h-12 w-fit items-center gap-3 px-5 text-sm font-bold uppercase tracking-[0.12em] transition hover:scale-[1.015]"
         >
           Email
           <ArrowRight className="size-4" />
