@@ -1,14 +1,38 @@
 @import "tailwindcss" source("../..");
 
 :root {
+  color-scheme: light;
   --background: #fff;
   --foreground: #182127;
   --paper: #f1f3f6;
   --blue: #244be8;
+  --brand-blue: #244be8;
   --slate: #58616e;
+  --border: #dfe3e9;
+  --mat: #dce4f0;
+  --mat-volt: #dfe5f3;
+  --mat-clash: #e1dff0;
+  --mat-brawl: #dce7ec;
+  --mat-bakery: #ede4d6;
+  --mat-auto: #dce3e2;
   --font-sans:
     "Montserrat", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display-family: var(--font-sans);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #11161d;
+  --foreground: #f2f4f8;
+  --paper: #181f29;
+  --blue: #91a9ff;
+  --slate: #b0bac8;
+  --border: #374251;
+  --mat: #293546;
+  --mat-volt: #2a354c;
+  --mat-clash: #353149;
+  --mat-brawl: #293d47;
+  --mat-bakery: #433b30;
+  --mat-auto: #2d3e3b;
 }
 @theme inline {
   --color-background: var(--background);
@@ -35,12 +59,13 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+select:focus-visible {
   outline: 3px solid var(--blue);
   outline-offset: 6px;
 }
 ::selection {
-  background: var(--blue);
+  background: var(--brand-blue);
   color: white;
 }
 img {
@@ -67,7 +92,7 @@ p {
   left: 1rem;
   padding: 1rem;
   color: white;
-  background: var(--blue);
+  background: var(--brand-blue);
   transform: translateY(-200%);
 }
 .skip-link:focus {
@@ -78,7 +103,7 @@ p {
   justify-content: space-between;
   align-items: center;
   min-height: 112px;
-  border-bottom: 1px solid #e4e7eb;
+  border-bottom: 1px solid var(--border);
 }
 .brand {
   display: flex;
@@ -91,17 +116,7 @@ p {
 .brand-mark {
   width: 49px;
   height: 49px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--blue);
-  color: white;
-  font-size: 29px;
-  letter-spacing: -0.12em;
-  padding-right: 4px;
-}
-.brand-mark span {
-  color: #b8c5ff;
+  flex-shrink: 0;
 }
 .brand-role {
   display: block;
@@ -114,7 +129,7 @@ p {
 .site-header nav {
   display: flex;
   align-items: center;
-  gap: 36px;
+  gap: 28px;
   font-size: 12px;
   font-weight: 600;
 }
@@ -125,8 +140,19 @@ p {
   gap: 7px;
   padding-block: 12px;
 }
-.site-header nav a:last-child {
+.site-header nav a[href="#contact"] {
   color: var(--blue);
+}
+.theme-select {
+  min-height: 44px;
+  max-width: 110px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
 }
 .site-header nav a:hover,
 .text-link:hover {
@@ -138,6 +164,9 @@ p {
   grid-template-columns: 1.16fr 1fr;
   gap: 36px;
   padding-top: 86px;
+}
+.hero > :first-child {
+  align-self: center;
 }
 .eyebrow {
   display: flex;
@@ -159,8 +188,7 @@ h1 {
   font-size: clamp(64px, 6.85vw, 104px);
   line-height: 0.98;
   font-weight: 650;
-  letter-spacing: -0.085em;
-  margin-top: 28px;
+  letter-spacing: -0.025em;
 }
 h1 span {
   color: var(--blue);
@@ -190,7 +218,7 @@ h1 span {
   font-weight: 650;
 }
 .button-blue {
-  background: var(--blue);
+  background: var(--brand-blue);
   color: white;
   transition: background 180ms ease;
 }
@@ -210,7 +238,7 @@ h1 span {
   align-self: center;
   min-width: 0;
   aspect-ratio: 1.04;
-  background: var(--blue);
+  background: var(--brand-blue);
   overflow: hidden;
   color: white;
 }
@@ -319,7 +347,7 @@ h1 span {
 h2 {
   font-size: clamp(36px, 4vw, 59px);
   font-weight: 600;
-  letter-spacing: -0.065em;
+  letter-spacing: -0.025em;
   line-height: 1.08;
 }
 .section-heading h2 {
@@ -347,7 +375,7 @@ h2 {
   display: block;
   position: relative;
   overflow: hidden;
-  background: #dce4f0;
+  background: var(--mat);
   padding: 23px 29px 47px;
 }
 .project-image-top {
@@ -385,7 +413,7 @@ h2 {
   font-weight: 600;
 }
 .project-volt .project-image-link {
-  background: #dfe5f3;
+  background: var(--mat-volt);
   padding-inline: 15%;
   padding-top: 25px;
 }
@@ -397,16 +425,16 @@ h2 {
   margin-inline: auto;
 }
 .project-clash .project-image-link {
-  background: #e1dff0;
+  background: var(--mat-clash);
 }
 .project-brawl .project-image-link {
-  background: #dce7ec;
+  background: var(--mat-brawl);
 }
 .project-bakery .project-image-link {
-  background: #ede4d6;
+  background: var(--mat-bakery);
 }
 .project-auto .project-image-link {
-  background: #dce3e2;
+  background: var(--mat-auto);
 }
 .project-info {
   display: flex;
@@ -417,7 +445,7 @@ h2 {
 .project-info h3 {
   font-size: 20px;
   font-weight: 650;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.02em;
 }
 .project-info h3 a:hover {
   color: var(--blue);
@@ -475,7 +503,7 @@ h2 {
   font-size: 20px;
   font-weight: 500;
   line-height: 1.5;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.015em;
   color: var(--foreground);
   margin-bottom: 22px;
 }
@@ -489,10 +517,10 @@ h2 {
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 550;
-  border: 1px solid #dfe3e9;
+  border: 1px solid var(--border);
 }
 .contact-section {
-  background: var(--blue);
+  background: var(--brand-blue);
   color: white;
   padding-block: 67px 55px;
 }
@@ -505,7 +533,7 @@ h2 {
 }
 .contact-heading h2 {
   font-size: clamp(46px, 6.8vw, 92px);
-  letter-spacing: -0.075em;
+  letter-spacing: -0.025em;
 }
 .contact-intents {
   display: flex;
@@ -524,19 +552,7 @@ h2 {
 }
 .contact-intents a:hover {
   background: white;
-  color: var(--blue);
-}
-.contact-arrow {
-  display: grid;
-  place-items: center;
-  width: 104px;
-  height: 104px;
-  border: 1px solid #ffffff60;
-  border-radius: 50%;
-  transition: background 180ms ease;
-}
-.contact-arrow:hover {
-  background: #ffffff20;
+  color: var(--brand-blue);
 }
 .contact-section a:focus-visible {
   outline-color: white;
@@ -560,7 +576,7 @@ h2 {
   align-items: center;
   gap: 20px;
   font-size: 17px;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   padding-bottom: 3px;
 }
 .site-footer {
@@ -574,12 +590,7 @@ h2 {
   font-size: clamp(50px, 11.2vw, 154px);
   font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.08em;
-}
-.footer-name span {
-  font-size: 0.6em;
-  color: var(--blue);
-  font-weight: 400;
+  letter-spacing: -0.025em;
 }
 .footer-bottom {
   display: flex;
@@ -587,7 +598,7 @@ h2 {
   gap: 28px;
   margin-top: 30px;
   padding-top: 22px;
-  border-top: 1px solid #e4e7eb;
+  border-top: 1px solid var(--border);
   font-size: 12px;
   color: var(--slate);
 }
@@ -629,8 +640,10 @@ h2 {
     width: calc(100% - 40px);
   }
   .site-header {
-    min-height: 88px;
-    padding-top: env(safe-area-inset-top);
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: 10px;
   }
   .brand {
     gap: 10px;
@@ -639,17 +652,18 @@ h2 {
   .brand-mark {
     width: 38px;
     height: 38px;
-    font-size: 25px;
   }
   .brand-role {
     font-size: 8px;
   }
   .site-header nav {
-    gap: 19px;
-    font-size: 10px;
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
   }
-  .site-header nav a:last-child {
-    gap: 3px;
+  .theme-select {
+    max-width: 100px;
   }
   .hero {
     grid-template-columns: 1fr;
@@ -660,8 +674,7 @@ h2 {
     font-size: 11px;
   }
   h1 {
-    font-size: clamp(62px, 13.5vw, 99px);
-    margin-top: 25px;
+    font-size: clamp(52px, 12vw, 90px);
   }
   .hero-intro {
     font-size: 15px;
@@ -776,15 +789,6 @@ h2 {
   .contact-heading h2 {
     font-size: clamp(39px, 8.4vw, 61px);
   }
-  .contact-arrow {
-    width: 57px;
-    height: 57px;
-    flex-shrink: 0;
-  }
-  .contact-arrow svg {
-    width: 35px;
-    height: 35px;
-  }
   .contact-bottom {
     align-items: flex-start;
     flex-direction: column;
@@ -801,7 +805,7 @@ h2 {
     padding-top: 36px;
   }
   .footer-name {
-    font-size: clamp(43px, 11.3vw, 82px);
+    font-size: clamp(38px, 10vw, 76px);
   }
   .footer-bottom {
     flex-wrap: wrap;

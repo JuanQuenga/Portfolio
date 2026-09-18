@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUpRight, Github } from "lucide-react";
+import { ArrowUpRight, Github } from "lucide-react";
+import { ThemeSelect } from "@/components/theme-select";
 
 const projects = [
   {
@@ -68,15 +69,19 @@ const skills = [
 
 export default function PortfolioExperience() {
   return (
-    <div className="portfolio">
+    <div className="portfolio" id="home">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <header className="site-header page-width">
         <a className="brand" href="#home" aria-label="Juan Quenga, home">
-          <span className="brand-mark" aria-hidden="true">
-            jq<span>.</span>
-          </span>
+          <img
+            className="brand-mark"
+            src="/favicon.svg"
+            width={49}
+            height={49}
+            alt=""
+          />
           <span>
             Juan Quenga<span className="brand-role">Software engineer</span>
           </span>
@@ -84,22 +89,13 @@ export default function PortfolioExperience() {
         <nav aria-label="Main navigation">
           <a href="#work">Work</a>
           <a href="#about">About</a>
-          <a href="#contact">
-            Let’s talk <ArrowUpRight aria-hidden="true" size={15} />
-          </a>
+          <a href="#contact">Let’s talk</a>
+          <ThemeSelect />
         </nav>
       </header>
       <main id="main">
-        <section
-          className="hero page-width"
-          id="home"
-          aria-labelledby="hero-title"
-        >
+        <section className="hero page-width" aria-labelledby="hero-title">
           <div className="hero-copy">
-            <p className="eyebrow">
-              <span className="blue-dot" /> Software engineer in Southeast
-              Michigan
-            </p>
             <h1 id="hero-title">
               Ideas into
               <br />
@@ -112,11 +108,10 @@ export default function PortfolioExperience() {
             </p>
             <div className="hero-actions">
               <a className="button button-blue" href="#work">
-                Explore my work <ArrowDown aria-hidden="true" size={17} />
+                Explore my work
               </a>
               <a className="text-link" href="#contact">
-                Have something in mind?{" "}
-                <ArrowUpRight aria-hidden="true" size={17} />
+                Have something in mind?
               </a>
             </div>
           </div>
@@ -138,7 +133,6 @@ export default function PortfolioExperience() {
                 <span />
                 <span />
                 <p>volt-scanner.vercel.app</p>
-                <ArrowUpRight size={12} />
               </div>
               <img
                 src="/screenshots/volt.png"
@@ -154,10 +148,7 @@ export default function PortfolioExperience() {
           </a>
           <div className="hero-bottom">
             <span>Design-minded. Detail-driven.</span>
-            <span>
-              Scroll to see what I’ve been building{" "}
-              <ArrowDown size={14} aria-hidden="true" />
-            </span>
+            <span>Scroll to see what I’ve been building</span>
           </div>
         </section>
         <section
@@ -191,7 +182,6 @@ export default function PortfolioExperience() {
                   >
                     <div className="project-image-top">
                       <span>{project.category}</span>
-                      <ArrowUpRight aria-hidden="true" size={21} />
                     </div>
                     <div className="project-screen">
                       <img
@@ -267,8 +257,7 @@ export default function PortfolioExperience() {
               target="_blank"
               rel="noreferrer"
             >
-              <Github size={18} aria-hidden="true" /> A look at my code{" "}
-              <ArrowUpRight size={16} aria-hidden="true" />
+              <Github size={18} aria-hidden="true" /> A look at my code
               <span className="sr-only">, opens in a new tab</span>
             </a>
           </div>
@@ -286,20 +275,13 @@ export default function PortfolioExperience() {
                 <br />
                 with a hello.
               </h2>
-              <a
-                className="contact-arrow"
-                href="mailto:juanquenga@gmail.com?subject=Let%E2%80%99s%20work%20together"
-                aria-label="Email Juan to work together"
-              >
-                <ArrowUpRight size={64} strokeWidth={1.3} aria-hidden="true" />
-              </a>
             </div>
             <div className="contact-intents">
               <a href="mailto:juanquenga@gmail.com?subject=Engineering%20opportunity">
-                Discuss a role <ArrowUpRight size={17} aria-hidden="true" />
+                Discuss a role
               </a>
               <a href="mailto:juanquenga@gmail.com?subject=New%20project%20inquiry">
-                Start a project <ArrowUpRight size={17} aria-hidden="true" />
+                Start a project
               </a>
             </div>
             <div className="contact-bottom">
@@ -309,8 +291,7 @@ export default function PortfolioExperience() {
                 I’d like to hear what you’re working on.
               </p>
               <a href="mailto:juanquenga@gmail.com?subject=Let%E2%80%99s%20work%20together">
-                juanquenga@gmail.com{" "}
-                <ArrowUpRight size={20} aria-hidden="true" />
+                juanquenga@gmail.com
               </a>
             </div>
           </div>
@@ -322,7 +303,7 @@ export default function PortfolioExperience() {
           className="footer-name"
           aria-label="Juan Quenga, back to top"
         >
-          Juan Quenga<span>↗</span>
+          Juan Quenga
         </a>
         <div className="footer-bottom">
           <span>Built with care in Michigan.</span>
@@ -331,12 +312,10 @@ export default function PortfolioExperience() {
             target="_blank"
             rel="noreferrer"
           >
-            GitHub <ArrowUpRight size={14} aria-hidden="true" />
+            GitHub
             <span className="sr-only">, opens in a new tab</span>
           </a>
-          <a href="#home">
-            Back to top <ArrowUpRight size={14} aria-hidden="true" />
-          </a>
+          <a href="#home">Back to top</a>
         </div>
       </footer>
     </div>
