@@ -11,26 +11,27 @@ import type { ReactNode } from "react";
 import appCss from "@/src/styles/app.css?url";
 
 const description =
-  "Software engineer based in southeast Michigan, passionate about building scalable and maintainable solutions.";
+  "Juan Quenga is a software engineer in southeast Michigan building web apps, business websites, and practical tools with React and TypeScript. Explore selected work and get in touch.";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Juan Quenga Portfolio" },
+      { title: "Juan Quenga | Software engineer" },
       { name: "description", content: description },
-      { property: "og:title", content: "Juan Quenga Portfolio" },
+      { property: "og:title", content: "Juan Quenga | Software engineer" },
       { property: "og:description", content: description },
       { property: "og:url", content: "https://www.juanquenga.com" },
       { property: "og:site_name", content: "Juan Quenga Portfolio" },
       { property: "og:locale", content: "en_US" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Juan Quenga Portfolio" },
+      { name: "twitter:title", content: "Juan Quenga | Software engineer" },
       { name: "twitter:description", content: description },
     ],
     links: [
+      { rel: "canonical", href: "https://www.juanquenga.com" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
@@ -40,7 +41,7 @@ export const Route = createRootRoute({
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@400..900&display=swap",
       },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],

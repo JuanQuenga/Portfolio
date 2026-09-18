@@ -1,669 +1,344 @@
-"use client";
-
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type RefObject,
-} from "react";
-import { ArrowRight, ArrowUpRight, Github, MapPin } from "lucide-react";
-import { HeroTitle } from "@/components/hero-title";
-import { PortfolioStageBackground } from "@/components/portfolio-stage-background";
+import { ArrowDown, ArrowUpRight, Github } from "lucide-react";
 
 const projects = [
   {
     title: "Volt",
-    summary:
-      "Scanner-first product capture with review flows for messy item data.",
+    category: "Product tool",
+    summary: "From a scan to a clearer product record.",
+    description:
+      "Scanner-first product capture, with review flows for messy item data.",
     href: "https://volt-scanner.vercel.app/",
-    screenshotSrc: "/screenshots/volt.png",
+    image: "/screenshots/volt.png",
+    alt: "Volt product scanning and item review interface",
+    tone: "volt",
   },
   {
     title: "ClashCrown",
-    summary:
-      "A Clash Royale companion for lookup, comparison, and player tools.",
+    category: "Gaming companion",
+    summary: "A closer look at the competition.",
+    description:
+      "A Clash Royale companion for player lookup, comparison, and game tools.",
     href: "https://clashcrown.vercel.app/",
-    screenshotSrc: "/screenshots/clashcrown.png",
+    image: "/screenshots/clashcrown.png",
+    alt: "ClashCrown Clash Royale player lookup website",
+    tone: "clash",
   },
   {
     title: "BrawlStats",
-    summary: "Brawl Stars stats with profile lookup and readable player data.",
+    category: "Player stats",
+    summary: "Player data, without the digging.",
+    description:
+      "Brawl Stars profile lookup that makes player statistics easier to read.",
     href: "https://brawlstatsio.vercel.app/",
-    screenshotSrc: "/screenshots/brawlstats.png",
+    image: "/screenshots/brawlstats.png",
+    alt: "BrawlStats website for Brawl Stars player statistics",
+    tone: "brawl",
   },
   {
     title: "Herman's Modern Bakery",
-    summary:
-      "A simple storefront for menu, hours, location, and quick mobile browsing.",
+    category: "Business website",
+    summary: "A neighborhood bakery, online.",
+    description:
+      "A storefront with the menu, hours, and location in easy reach on any screen.",
     href: "https://hermans.vercel.app",
-    screenshotSrc: "/screenshots/hermans.png",
+    image: "/screenshots/hermans.png",
+    alt: "Herman's Modern Bakery storefront website",
+    tone: "bakery",
   },
   {
     title: "Multi Auto",
-    summary:
-      "Responsive service screens for compact workflows and quick comparisons.",
+    category: "Service website",
+    summary: "A straightforward service experience.",
+    description:
+      "Responsive service screens built around compact workflows and quick comparisons.",
     href: "https://multi-auto.vercel.app",
-    screenshotSrc: "/screenshots/multi-auto.png",
-  },
-  {
-    title: "Piggies US",
-    summary:
-      "A social app with accounts, subscriptions, and live community screens.",
-    href: "https://www.piggies.us/",
-    githubHref: "https://github.com/piggies-us/piggies-us",
-    screenshotSrc: "/screenshots/piggies.png",
+    image: "/screenshots/multi-auto.png",
+    alt: "Multi Auto responsive automotive service website",
+    tone: "auto",
   },
 ];
-
-// Screens render in a fixed order: home, approach, work intro, one per
-// project, then contact. Deriving the indices from this order keeps the offset
-// math in one place instead of sprinkling `+ 2` / `+ 3` literals everywhere.
-const HOME_SCREEN = 0;
-const PRACTICE_SCREEN = 1;
-const WORK_SCREEN = 2;
-const FIRST_PROJECT_SCREEN = 3;
-const CONTACT_SCREEN = FIRST_PROJECT_SCREEN + projects.length;
-const SCREEN_COUNT = CONTACT_SCREEN + 1;
-
-const heroSkills = ["React", "Next", "TanStack", "Convex"];
-
-const heroNameLines = ["Juan", "Quenga"];
-const heroGlassPreset = {
-  width: 1600,
-  height: 104,
-} as const;
-
-type HeroGlassSettings = typeof heroGlassPreset;
-
-const approachFocus = [
-  {
-    label: "Type safety",
-    copy: "End-to-end types across React, APIs, and data — fewer surprises from UI to backend.",
-  },
-  {
-    label: "Agentic workflows",
-    copy: "Cursor, Codex, and LLM agents in the loop for faster iteration without losing judgment.",
-  },
-  {
-    label: "Modern tooling",
-    copy: "TanStack, Tailwind, Convex, CI/CD, and deploy pipelines that keep shipping predictable.",
-  },
+const skills = [
+  "TypeScript",
+  "React",
+  "Next.js",
+  "TanStack",
+  "Convex",
+  "Tailwind CSS",
 ];
 
 export default function PortfolioExperience() {
-  const stageRef = useRef<HTMLElement | null>(null);
-  const isCompactViewport = useCompactViewport();
-  const { activeScreen, goToScreen } = useNativeScreens(SCREEN_COUNT, stageRef);
-  const activeProjectIndex =
-    activeScreen >= FIRST_PROJECT_SCREEN && activeScreen < CONTACT_SCREEN
-      ? activeScreen - FIRST_PROJECT_SCREEN
-      : null;
-  const activeProject = useMemo(
-    () =>
-      activeProjectIndex === null ? null : (projects[activeProjectIndex] ?? null),
-    [activeProjectIndex],
-  );
-  const renderedGlassHeight = getRenderedGlassHeight(
-    heroGlassPreset.height,
-    isCompactViewport,
-    activeProject !== null,
-  );
-
   return (
-    <main
-      ref={stageRef}
-      className="portfolio-stage relative isolate bg-void text-ink"
-      style={
-        {
-          "--glass-height": `${renderedGlassHeight}px`,
-          "--mobile-dock-space": `${renderedGlassHeight + 44}px`,
-        } as CSSProperties
-      }
-    >
-      <PortfolioStageBackground scrollContainerRef={stageRef} />
-      <Header onNavigate={goToScreen} />
-      <SectionNavigator
-        activeScreen={activeScreen}
-        screenCount={SCREEN_COUNT}
-        glassHeight={renderedGlassHeight}
-        onNavigate={goToScreen}
-      />
-      <PageContent onNavigate={goToScreen} />
-      <SharedGlassBar
-        project={activeProject}
-        settings={heroGlassPreset}
-        renderedHeight={renderedGlassHeight}
-      />
-    </main>
-  );
-}
-
-function useCompactViewport() {
-  const [isCompactViewport, setIsCompactViewport] = useState(false);
-
-  useLayoutEffect(() => {
-    const media = window.matchMedia("(max-width: 639px)");
-
-    const updateViewport = () => {
-      setIsCompactViewport(media.matches);
-    };
-
-    updateViewport();
-    media.addEventListener("change", updateViewport);
-
-    return () => media.removeEventListener("change", updateViewport);
-  }, []);
-
-  return isCompactViewport;
-}
-
-function useNativeScreens(
-  screenCount: number,
-  stageRef: RefObject<HTMLElement | null>,
-) {
-  const [activeScreen, setActiveScreen] = useState(0);
-
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    const updateActiveScreen = () => {
-      const stageRect = stage.getBoundingClientRect();
-      const stageCenter = stageRect.top + stageRect.height / 2;
-      const screens = Array.from(
-        stage.querySelectorAll<HTMLElement>("[data-portfolio-screen]"),
-      );
-      const closestScreen = screens.reduce(
-        (closest, screen) => {
-          const rect = screen.getBoundingClientRect();
-          const screenIndex = Number(screen.dataset.portfolioScreen ?? 0);
-          const distance = Math.abs(rect.top + rect.height / 2 - stageCenter);
-
-          return distance < closest.distance
-            ? { distance, screen: screenIndex }
-            : closest;
-        },
-        { distance: Number.POSITIVE_INFINITY, screen: 0 },
-      );
-
-      setActiveScreen(closestScreen.screen);
-    };
-
-    updateActiveScreen();
-    stage.addEventListener("scroll", updateActiveScreen, { passive: true });
-    window.addEventListener("resize", updateActiveScreen);
-
-    return () => {
-      stage.removeEventListener("scroll", updateActiveScreen);
-      window.removeEventListener("resize", updateActiveScreen);
-    };
-  }, [stageRef]);
-
-  return {
-    activeScreen,
-    goToScreen: (screen: number) => {
-      const nextScreen = Math.max(0, Math.min(screenCount - 1, screen));
-      stageRef.current
-        ?.querySelector<HTMLElement>(`[data-portfolio-screen="${nextScreen}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setActiveScreen(nextScreen);
-    },
-  };
-}
-
-function getRenderedGlassHeight(
-  baseHeight: number,
-  isCompactViewport: boolean,
-  hasProject: boolean,
-) {
-  if (!isCompactViewport) return baseHeight;
-  // Portrait dock is a compact bottom bar, not the wide landscape pill.
-  return hasProject ? 64 : 68;
-}
-
-function formatHost(href: string) {
-  try {
-    return new URL(href).hostname.replace(/^www\./, "");
-  } catch {
-    return href;
-  }
-}
-
-function getScreenLabel(screen: number) {
-  if (screen === HOME_SCREEN) return "Home";
-  if (screen === WORK_SCREEN) return "My Work";
-  if (screen === PRACTICE_SCREEN) return "Approach";
-  if (screen === CONTACT_SCREEN) return "Contact";
-
-  const projectIndex = screen - FIRST_PROJECT_SCREEN;
-  if (projectIndex >= 0 && projectIndex < projects.length) {
-    return projects[projectIndex]?.title ?? `Project ${projectIndex + 1}`;
-  }
-
-  return `Section ${screen + 1}`;
-}
-
-function SectionNavigator({
-  activeScreen,
-  screenCount,
-  glassHeight,
-  onNavigate,
-}: {
-  activeScreen: number;
-  screenCount: number;
-  glassHeight: number;
-  onNavigate: (screen: number) => void;
-}) {
-  return (
-    <nav
-      aria-label="Portfolio sections"
-      className="section-navigator"
-      style={{ "--glass-height": `${glassHeight}px` } as CSSProperties}
-    >
-      <ol className="section-navigator-list">
-        {Array.from({ length: screenCount }, (_, screen) => {
-          const isActive = screen === activeScreen;
-          const label = getScreenLabel(screen);
-
-          return (
-            <li key={screen}>
-              <button
-                type="button"
-                aria-label={`Go to ${label}`}
-                aria-current={isActive ? "step" : undefined}
-                className="section-navigator-button"
-                onClick={() => onNavigate(screen)}
-              >
-                <span className="section-navigator-mark" />
-                <span className="sr-only">{label}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-function PageContent({
-  onNavigate,
-}: {
-  onNavigate?: (screen: number) => void;
-}) {
-  return (
-    <div className="portfolio-track relative z-10">
-      {Array.from({ length: SCREEN_COUNT }, (_, screen) => (
-        <div
-          key={screen}
-          className="portfolio-screen"
-          data-portfolio-screen={screen}
-        >
-          <ScreenContent screen={screen} onNavigate={onNavigate} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ScreenContent({
-  screen,
-  onNavigate,
-}: {
-  screen: number;
-  onNavigate?: (screen: number) => void;
-}) {
-  if (screen === HOME_SCREEN) return <Hero onNavigate={onNavigate} />;
-  if (screen === WORK_SCREEN) return <WorkIntro onNavigate={onNavigate} />;
-  if (screen === PRACTICE_SCREEN) return <Practice />;
-  if (screen === CONTACT_SCREEN) return <Contact />;
-
-  const projectIndex = screen - FIRST_PROJECT_SCREEN;
-  const project = projects[projectIndex];
-  if (!project) return null;
-  return <ProjectScreen index={projectIndex} project={project} />;
-}
-
-function Header({ onNavigate }: { onNavigate: (screen: number) => void }) {
-  return (
-    <header className="fixed inset-x-0 top-0 z-40 grid grid-cols-[auto_1fr_auto] items-start px-4 pt-4 sm:px-7 sm:pt-6">
-      {/* Spacer balances the GitHub button so the nav stays centered. */}
-      <div className="size-12" aria-hidden="true" />
-      <nav className="liquid-glass header-nav justify-self-center flex items-center gap-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink/68 sm:gap-2 sm:text-xs sm:tracking-[0.16em]">
-        <span className="header-nav-shell" aria-hidden="true" />
-        <a
-          href="#top"
-          onClick={(event) => {
-            event.preventDefault();
-            onNavigate(HOME_SCREEN);
-          }}
-          className="transition hover:text-white"
-        >
-          Home
+    <div className="portfolio">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <header className="site-header page-width">
+        <a className="brand" href="#home" aria-label="Juan Quenga, home">
+          <span className="brand-mark" aria-hidden="true">
+            jq<span>.</span>
+          </span>
+          <span>
+            Juan Quenga<span className="brand-role">Software engineer</span>
+          </span>
         </a>
-        <a
-          href="#work"
-          onClick={(event) => {
-            event.preventDefault();
-            onNavigate(WORK_SCREEN);
-          }}
-          className="transition hover:text-white"
+        <nav aria-label="Main navigation">
+          <a href="#work">Work</a>
+          <a href="#about">About</a>
+          <a href="#contact">
+            Let’s talk <ArrowUpRight aria-hidden="true" size={15} />
+          </a>
+        </nav>
+      </header>
+      <main id="main">
+        <section
+          className="hero page-width"
+          id="home"
+          aria-labelledby="hero-title"
         >
-          <span className="sm:hidden">Work</span>
-          <span className="hidden sm:inline">My Work</span>
-        </a>
-        <a
-          href="#contact"
-          onClick={(event) => {
-            event.preventDefault();
-            onNavigate(CONTACT_SCREEN);
-          }}
-          className="transition hover:text-white"
+          <div className="hero-copy">
+            <p className="eyebrow">
+              <span className="blue-dot" /> Software engineer in Southeast
+              Michigan
+            </p>
+            <h1 id="hero-title">
+              Ideas into
+              <br />
+              <span>interfaces.</span>
+            </h1>
+            <p className="hero-intro">
+              I’m Juan, a self-taught software engineer in Southeast Michigan. I
+              build thoughtful websites and web apps that make everyday things a
+              little easier.
+            </p>
+            <div className="hero-actions">
+              <a className="button button-blue" href="#work">
+                Explore my work <ArrowDown aria-hidden="true" size={17} />
+              </a>
+              <a className="text-link" href="#contact">
+                Have something in mind?{" "}
+                <ArrowUpRight aria-hidden="true" size={17} />
+              </a>
+            </div>
+          </div>
+          <a
+            className="hero-art"
+            href="https://volt-scanner.vercel.app/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Explore Volt, featured project, opens in a new tab"
+          >
+            <div className="art-grid" aria-hidden="true" />
+            <span className="art-label">A closer look at Volt</span>
+            <span className="art-asterisk" aria-hidden="true">
+              ✳
+            </span>
+            <div className="browser-window">
+              <div className="browser-bar" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <p>volt-scanner.vercel.app</p>
+                <ArrowUpRight size={12} />
+              </div>
+              <img
+                src="/screenshots/volt.png"
+                alt="Volt's product scanning interface"
+                width={1440}
+                height={900}
+                fetchPriority="high"
+              />
+            </div>
+            <span className="art-project">
+              Meet Volt <ArrowUpRight size={18} aria-hidden="true" />
+            </span>
+          </a>
+          <div className="hero-bottom">
+            <span>Design-minded. Detail-driven.</span>
+            <span>
+              Scroll to see what I’ve been building{" "}
+              <ArrowDown size={14} aria-hidden="true" />
+            </span>
+          </div>
+        </section>
+        <section
+          className="work-section"
+          id="work"
+          aria-labelledby="work-title"
         >
-          Contact
-        </a>
-      </nav>
-      <div className="flex items-center justify-end gap-3">
-        <a
-          href="https://github.com/JuanQuenga"
-          className="glass-button inline-flex size-12 items-center justify-center transition hover:border-signal/70 hover:text-signal"
-          aria-label="Juan Quenga GitHub"
-        >
-          <Github className="size-5" />
-        </a>
-      </div>
-    </header>
-  );
-}
-
-function Hero({ onNavigate }: { onNavigate?: (screen: number) => void }) {
-  return (
-    <section
-      id="top"
-      data-glass-context="home"
-      className="hero-mobile relative flex min-h-[100svh] px-4 pb-[clamp(8rem,17svh,12rem)] pt-28 sm:px-7"
-    >
-      <div className="mx-auto flex w-full max-w-[1600px] items-end">
-        <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(220px,0.28fr)] lg:items-end">
-          <div>
-            <HeroTitle lines={heroNameLines} />
-            <div className="hero-kicker-wrap mt-5 w-fit max-w-[22rem] sm:max-w-full">
-              <p
-                className="hero-kicker text-[clamp(0.95rem,3.8vw,1.9rem)] font-black uppercase leading-tight tracking-normal text-white"
-                data-text="<Self Taught Software Engineer />"
-                aria-label="Self Taught Software Engineer"
-              >
-                <span className="text-signal">&lt;</span>
-                Self Taught Software Engineer
-                <span className="text-signal">/&gt;</span>
+          <div className="page-width">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Selected work</p>
+                <h2 id="work-title">Made real.</h2>
+              </div>
+              <p>
+                Useful tools. Local businesses.
+                <br />A few things I’ve put out into the world.
               </p>
             </div>
-            <a
-              href="#work"
-              onClick={(event) => {
-                event.preventDefault();
-                onNavigate?.(WORK_SCREEN);
-              }}
-              className="hero-mobile-cta sm:hidden"
-            >
-              <span className="hero-mobile-cta-rule" aria-hidden="true" />
-              View work
-              <ArrowRight className="size-3.5 text-signal" />
-            </a>
-          </div>
-
-          <div className="hidden lg:block">
-            <a
-              href="#work"
-              onClick={(event) => {
-                event.preventDefault();
-                onNavigate?.(WORK_SCREEN);
-              }}
-              className="group block pb-2 text-right text-sm font-black text-ink"
-            >
-              My Work
-              <span className="mt-5 block h-px w-full bg-ink/28 transition group-hover:bg-signal" />
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SharedGlassBar({
-  project,
-  settings,
-  renderedHeight,
-}: {
-  project: (typeof projects)[number] | null;
-  settings: HeroGlassSettings;
-  renderedHeight: number;
-}) {
-  return (
-    <div
-      className="liquid-glass header-nav project-glass-bar"
-      style={
-        {
-          "--hero-glass-width": `${settings.width}px`,
-          "--glass-height": `${renderedHeight}px`,
-          height: `${renderedHeight}px`,
-          minHeight: `${renderedHeight}px`,
-        } as CSSProperties
-      }
-    >
-      <span className="header-nav-shell project-glass-shell" aria-hidden="true" />
-      {project ? (
-        <div className="hero-glass-content project-glass-content grid h-full gap-5 px-5 py-4 text-base font-semibold text-ink/78 sm:px-7 sm:grid-cols-[1fr_auto] sm:items-center lg:grid-cols-[minmax(0,0.62fr)_minmax(0,0.38fr)_auto]">
-          <div className="project-glass-text min-w-0">
-            {/* Portrait already shows the title in-page, so the dock carries the
-                destination instead of repeating it. */}
-            <div className="project-glass-host truncate sm:hidden">
-              {formatHost(project.href)}
+            <div className="project-grid">
+              {projects.map((project) => (
+                <article
+                  className={`project project-${project.tone}`}
+                  key={project.title}
+                >
+                  <a
+                    className="project-image-link"
+                    href={project.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Visit ${project.title}, opens in a new tab`}
+                  >
+                    <div className="project-image-top">
+                      <span>{project.category}</span>
+                      <ArrowUpRight aria-hidden="true" size={21} />
+                    </div>
+                    <div className="project-screen">
+                      <img
+                        src={project.image}
+                        alt={project.alt}
+                        width={1440}
+                        height={900}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <span className="project-visit">
+                      Explore live site{" "}
+                      <ArrowUpRight aria-hidden="true" size={16} />
+                    </span>
+                  </a>
+                  <div className="project-info">
+                    <div>
+                      <h3>
+                        <a href={project.href} target="_blank" rel="noreferrer">
+                          {project.title}
+                          <span className="sr-only">, opens in a new tab</span>
+                        </a>
+                      </h3>
+                      <p className="project-summary">{project.summary}</p>
+                    </div>
+                    <p className="project-description">{project.description}</p>
+                  </div>
+                </article>
+              ))}
             </div>
-            <div className="project-glass-title hidden truncate text-2xl font-black uppercase leading-none text-white sm:block">
-              {project.title}
+          </div>
+        </section>
+        <section
+          className="about-section page-width"
+          id="about"
+          aria-labelledby="about-title"
+        >
+          <div className="about-heading">
+            <p className="eyebrow">A little about me</p>
+            <h2 id="about-title">
+              Curious by nature.
+              <br />
+              <span>Builder by choice.</span>
+            </h2>
+            <div className="location">
+              <span className="blue-dot" /> Southeast Michigan, USA
             </div>
-            <p className="project-glass-summary mt-2 hidden max-w-3xl truncate leading-6 text-ink/62 sm:block">
-              {project.summary}
+          </div>
+          <div className="about-copy">
+            <p className="about-lead">
+              I like figuring things out, then making them work for someone
+              else.
             </p>
-          </div>
-          <div className="hidden min-w-0 flex-wrap justify-center gap-x-9 gap-y-2 text-ink/72 lg:flex">
-            {heroSkills.map((skill) => (
-              <span key={skill}>{skill}</span>
-            ))}
-          </div>
-          <div className="project-glass-actions flex items-center gap-3 justify-self-end">
+            <p>
+              I’m a self-taught software engineer working across the frontend
+              and backend. My projects range from game statistics to product
+              scanning and websites for local businesses.
+            </p>
+            <p>
+              I care about readable interfaces and the code behind them. I work
+              with TypeScript, React, and modern web tools to connect what
+              people see with the data they need.
+            </p>
+            <div className="skill-list" aria-label="Technologies I work with">
+              {skills.map((skill) => (
+                <span key={skill}>{skill}</span>
+              ))}
+            </div>
             <a
-              href={project.href}
-              className="action-button glass-button glass-button-primary inline-flex h-[3.25rem] items-center gap-2 px-5 text-xs font-bold uppercase tracking-[0.14em] transition hover:scale-[1.015]"
+              className="text-link"
+              href="https://github.com/JuanQuenga"
+              target="_blank"
+              rel="noreferrer"
             >
-              Open
-              <ArrowUpRight className="size-4" />
+              <Github size={18} aria-hidden="true" /> A look at my code{" "}
+              <ArrowUpRight size={16} aria-hidden="true" />
+              <span className="sr-only">, opens in a new tab</span>
             </a>
           </div>
-        </div>
-      ) : (
-        <div className="hero-glass-content flex h-full items-center gap-4 px-5 py-4 text-base font-semibold text-ink/78 sm:gap-6 sm:px-7">
-          <div className="flex min-w-0 shrink-0 items-center gap-4">
-            <div className="glass-button flex size-14 shrink-0 items-center justify-center text-lg font-black leading-none text-white">
-              JQ
-            </div>
-            <div className="min-w-0">
-              <div className="text-[1.05rem] leading-5 text-white">
-                Juan Quenga
-              </div>
-              <div className="mt-1 leading-5 text-ink/58">
-                Software Engineer
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-glass-location ml-auto flex shrink-0 items-center gap-2 truncate text-ink/72 sm:gap-3">
-            <MapPin className="size-5 shrink-0 text-signal" />
-            <span className="sm:hidden">SE Michigan</span>
-            <span className="hidden sm:inline">Southeast Michigan</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function WorkIntro({ onNavigate }: { onNavigate?: (screen: number) => void }) {
-  return (
-    <section
-      id="work"
-      data-glass-context="work"
-      className="work-mobile relative flex min-h-[100svh] px-4 py-16 sm:px-6 lg:py-24"
-    >
-      <div className="work-mobile-inner mx-auto grid w-full max-w-7xl content-center gap-10 border-b border-ink/12 pb-32 pt-28 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:gap-16 lg:pb-36 lg:pt-24">
-        <div className="max-w-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/48">
-            My Work
-          </p>
-          <h2 className="mt-5 text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
-            Recent projects.
-          </h2>
-          <p className="mt-6 max-w-lg text-base font-semibold leading-7 text-ink/70 sm:text-lg sm:leading-8">
-            I love building solutions for stores, local businesses, and
-            internal teams.
-          </p>
-          <p className="mt-4 text-sm font-semibold text-ink/48">
-            {projects.length} projects
-          </p>
-        </div>
-        <ol className="work-project-list">
-          {projects.map((project, index) => (
-            <li key={project.title}>
+        </section>
+        <section
+          className="contact-section"
+          id="contact"
+          aria-labelledby="contact-title"
+        >
+          <div className="page-width">
+            <p className="eyebrow">What’s next?</p>
+            <div className="contact-heading">
+              <h2 id="contact-title">
+                Good things start
+                <br />
+                with a hello.
+              </h2>
               <a
-                href={`#project-${index}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onNavigate?.(FIRST_PROJECT_SCREEN + index);
-                }}
-                className="work-project-link"
+                className="contact-arrow"
+                href="mailto:juanquenga@gmail.com?subject=Let%E2%80%99s%20work%20together"
+                aria-label="Email Juan to work together"
               >
-                <span className="work-project-name">{project.title}</span>
-                <ArrowRight className="work-project-arrow size-4 shrink-0" />
+                <ArrowUpRight size={64} strokeWidth={1.3} aria-hidden="true" />
               </a>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-function ProjectScreen({
-  index,
-  project,
-}: {
-  index: number;
-  project: (typeof projects)[number];
-}) {
-  return (
-    <section
-      id={`project-${index}`}
-      data-glass-context="project"
-      data-project-index={index}
-      className="project-screen relative flex h-[100svh] items-center px-4 py-10 sm:px-6"
-    >
-      <div className="project-screen-layout mx-auto flex h-full w-full max-w-[1700px] items-center justify-center pb-[clamp(7rem,14svh,10rem)] pt-[clamp(4rem,9svh,6rem)]">
-        <div className="project-mobile-meta sm:hidden">
-          <h2 className="text-[clamp(2rem,11vw,3.35rem)] font-black uppercase leading-[0.88] tracking-normal text-white">
-            {project.title}
-          </h2>
-          <p className="mt-2 max-w-[24rem] text-sm font-semibold leading-6 text-ink/66">
-            {project.summary}
-          </p>
-        </div>
-        <div className="glass-frame project-shot relative overflow-hidden">
+            </div>
+            <div className="contact-intents">
+              <a href="mailto:juanquenga@gmail.com?subject=Engineering%20opportunity">
+                Discuss a role <ArrowUpRight size={17} aria-hidden="true" />
+              </a>
+              <a href="mailto:juanquenga@gmail.com?subject=New%20project%20inquiry">
+                Start a project <ArrowUpRight size={17} aria-hidden="true" />
+              </a>
+            </div>
+            <div className="contact-bottom">
+              <p>
+                Hiring for your team or planning a project?
+                <br />
+                I’d like to hear what you’re working on.
+              </p>
+              <a href="mailto:juanquenga@gmail.com?subject=Let%E2%80%99s%20work%20together">
+                juanquenga@gmail.com{" "}
+                <ArrowUpRight size={20} aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer className="site-footer page-width">
+        <a
+          href="#home"
+          className="footer-name"
+          aria-label="Juan Quenga, back to top"
+        >
+          Juan Quenga<span>↗</span>
+        </a>
+        <div className="footer-bottom">
+          <span>Built with care in Michigan.</span>
           <a
-            href={project.href}
-            className="group block"
-            aria-label={`Open ${project.title}`}
+            href="https://github.com/JuanQuenga"
+            target="_blank"
+            rel="noreferrer"
           >
-            <img
-              src={project.screenshotSrc}
-              alt={`${project.title} screenshot`}
-              loading={index === 0 ? "eager" : "lazy"}
-              decoding="async"
-              className="aspect-[16/9] w-full object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.012] group-hover:opacity-100"
-            />
+            GitHub <ArrowUpRight size={14} aria-hidden="true" />
+            <span className="sr-only">, opens in a new tab</span>
+          </a>
+          <a href="#home">
+            Back to top <ArrowUpRight size={14} aria-hidden="true" />
           </a>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function Practice() {
-  return (
-    <section
-      id="practice"
-      data-glass-context="practice"
-      className="practice-mobile relative flex min-h-[100svh] items-center px-4 py-16 sm:px-6 lg:py-24"
-    >
-      <div className="practice-mobile-inner mx-auto grid w-full max-w-7xl content-center gap-10 border-y border-ink/12 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end lg:gap-16 lg:py-16">
-        <div className="max-w-xl">
-          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink/48">
-            Approach
-          </p>
-          <h2 className="text-4xl font-black uppercase leading-[0.95] tracking-normal sm:text-6xl">
-            How I build.
-          </h2>
-          <p className="mt-6 max-w-md text-base font-semibold leading-7 text-ink/70 sm:text-lg sm:leading-8">
-            Full-stack type safety, agentic coding workflows, and modern
-            tooling from local build to production deploy.
-          </p>
-        </div>
-        <div className="grid gap-0 border-t border-ink/12">
-          {approachFocus.map((item) => (
-            <div
-              key={item.label}
-              className="grid gap-3 border-b border-ink/12 py-5 sm:grid-cols-[8.5rem_1fr] sm:items-baseline sm:gap-8"
-            >
-              <div className="text-xs font-black uppercase tracking-[0.12em] text-signal sm:text-[0.8rem]">
-                {item.label}
-              </div>
-              <p className="max-w-xl text-sm font-semibold leading-6 text-ink/70 sm:text-base sm:leading-7">
-                {item.copy}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Contact() {
-  return (
-    <section
-      id="contact"
-      data-glass-context="contact"
-      className="contact-mobile relative flex min-h-[100svh] items-center px-4 py-16 sm:px-6 lg:py-24"
-    >
-      <div className="contact-mobile-inner mx-auto grid w-full max-w-7xl gap-8 border-t border-ink/12 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div>
-          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink/48">
-            Contact
-          </p>
-          <h2 className="max-w-5xl text-5xl font-black uppercase leading-[0.9] tracking-normal sm:text-7xl">
-            Let’s build something useful.
-          </h2>
-        </div>
-        <a
-          href="mailto:juanquenga@gmail.com?subject=Let's work together&body=Hi Juan, I'd like to discuss a potential project with you."
-          className="action-button glass-button glass-button-primary inline-flex h-12 w-fit items-center gap-3 px-5 text-sm font-bold uppercase tracking-[0.12em] transition hover:scale-[1.015]"
-        >
-          Email
-          <ArrowRight className="size-4" />
-        </a>
-      </div>
-    </section>
+      </footer>
+    </div>
   );
 }
