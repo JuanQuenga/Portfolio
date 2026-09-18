@@ -2,32 +2,30 @@
 
 A modern, responsive portfolio website built with TanStack Start, React 19, and Tailwind CSS v4.
 
-## Live Demo
+## Live site
 
 [View Portfolio](https://www.juanquenga.com)
 
 ## Features
 
-- Modern portfolio layout with smooth reveal animations
+- Screenshot-led portfolio with native section navigation
 - Responsive design for mobile, tablet, and desktop
-- Project cards with screenshots, demo links, and GitHub links
-- Tailwind CSS v4 styling with shadcn-style CSS variables
+- Five project previews with live-site links
+- Separate contact paths for hiring and project inquiries
 - TanStack Start SSR build powered by Vite and Nitro
 
-## Tech Stack
+## Tech stack
 
 - **Framework**: TanStack Start with React 19
 - **Routing**: TanStack Router file-based routes
 - **Build Tool**: Vite
 - **Server Build**: Nitro
 - **Styling**: Tailwind CSS v4
-- **UI Components**: Radix UI primitives with custom styling
-- **Animations**: Motion
 - **Icons**: Lucide React
 - **Package Manager**: pnpm
 - **TypeScript**: Strict type checking
 
-## Project Structure
+## Main files
 
 ```text
 Portfolio/
@@ -39,12 +37,8 @@ Portfolio/
 │   ├── routeTree.gen.ts
 │   └── styles/app.css
 ├── components/
-│   ├── ui/
-│   ├── animated-heading.tsx
-│   ├── project-card.tsx
-│   └── reveal-on-view.tsx
-├── hooks/
-├── lib/
+│   └── portfolio-experience.tsx
+├── scripts/check-portfolio.mjs
 ├── public/
 │   ├── images/
 │   ├── icons/
@@ -53,11 +47,11 @@ Portfolio/
 └── package.json
 ```
 
-## Getting Started
+## Run locally
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 20.19+ or 22.12+, including newer supported releases
 - pnpm
 
 ### Installation
@@ -74,7 +68,24 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open the local URL printed by Vite. It uses HTTPS when both `.certs/dev-cert.pem` and `.certs/dev-key.pem` exist, and HTTP otherwise. Local certificates are ignored by Git. The existing Vite configuration also allows access from your local network.
+
+### Checks
+
+Run the typecheck, then check a running preview:
+
+```bash
+pnpm exec tsc --noEmit
+node scripts/check-portfolio.mjs http://localhost:3000
+```
+
+For a local HTTPS certificate created with mkcert, trust its CA for the check:
+
+```bash
+NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem" node scripts/check-portfolio.mjs https://localhost:3000
+```
+
+The script checks server-rendered content, section destinations, contact links, project previews, and removal of the excluded project. Also inspect desktop and mobile layouts in a browser.
 
 ### Production
 
@@ -85,7 +96,7 @@ pnpm start
 
 ## Customization
 
-Add or edit projects in `src/routes/index.tsx` inside the `projects` array.
+Add or edit projects in `components/portfolio-experience.tsx` inside the `projects` array.
 
 Global styles and Tailwind v4 theme variables live in `src/styles/app.css`.
 

@@ -23,3 +23,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local https certs
+.certs/
+
+# macOS Finder metadata
+.DS_Store
