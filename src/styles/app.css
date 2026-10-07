@@ -194,8 +194,8 @@ figure {
 .hero-name {
   position: relative;
   z-index: 1;
-  padding-top: clamp(150px, 22svh, 220px);
-  font-size: clamp(72px, 15.2vw, 236px);
+  padding-top: clamp(130px, 17svh, 180px);
+  font-size: clamp(64px, 11vw, 188px);
   font-weight: 800;
   line-height: 0.86;
   letter-spacing: -0.03em;
@@ -624,7 +624,9 @@ h2 {
     display: none;
   }
   .hero-name {
-    padding-top: 124px;
+    padding-top: 112px;
+    font-size: 11.5vw;
+    white-space: nowrap;
   }
   .hero-foot {
     grid-template-columns: minmax(0, 1fr);

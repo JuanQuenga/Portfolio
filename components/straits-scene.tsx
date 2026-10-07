@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-// The Mackinac Bridge at dusk, drawn in two layers so the page's own
-// content (the name) can sit between the sky and the bridge structure.
+// The Mackinac Bridge at dusk, seen from the Mackinaw City shore. The bridge
+// is modelled in feet and projected through a camera, then drawn in two
+// layers so the page's own content (the name) sits between sky and bridge.
 
 type Lamp = {
   x: number;
@@ -9,27 +10,49 @@ type Lamp = {
   r: number;
   delay: number;
   seed: number;
-  streak: number;
+  mirror: number;
+  dim: number;
 };
 
 type Star = { x: number; y: number; r: number; a: number; speed: number };
+
+type Point = { x: number; y: number; z: number };
+
+type Camera = {
+  focal: number;
+  project: (x: number, y: number, z: number) => Point;
+};
 
 type Scene = {
   w: number;
   h: number;
   horizon: number;
+  camera: Camera;
   background: HTMLCanvasElement;
   bridge: HTMLCanvasElement;
   lamps: Lamp[];
-  beacons: { x: number; y: number }[];
-  towers: number[];
-  towerW: number;
+  beacons: Point[];
+  towers: { x: number; y: number; width: number; length: number }[];
   stars: Star[];
 };
 
 const IGNITE_START = 650;
 const IGNITE_SWEEP = 1700;
 const IGNITE_FADE = 520;
+
+// Real proportions, in feet: 552 ft towers, 3,800 ft main span, 1,800 ft
+// side spans, a 38 ft deep stiffening truss, and long approach viaducts.
+const TOWER_HEIGHT = 552;
+const TOWERS = [1800, 5600];
+const ANCHORAGES = [0, 7400];
+const SOUTH_END = -2800;
+const NORTH_END = 17000;
+const CABLE_Z = 34;
+const LEG_Z = 40;
+const EYE_HEIGHT = 45;
+
+const IVORY = "#efe5c8";
+const FOLIAGE = ["#0f2119", "#163025"];
 
 function seeded(seed: number) {
   return () => {
@@ -49,57 +72,116 @@ function layer(w: number, h: number, dpr: number) {
   return { canvas, ctx };
 }
 
-function quad(
-  a: [number, number],
-  c: [number, number],
-  b: [number, number],
-  t: number,
-): [number, number] {
-  const u = 1 - t;
-  return [
-    u * u * a[0] + 2 * u * t * c[0] + t * t * b[0],
-    u * u * a[1] + 2 * u * t * c[1] + t * t * b[1],
-  ];
+const smooth = (t: number) => {
+  const k = Math.min(1, Math.max(0, t));
+  return k * k * (3 - 2 * k);
+};
+
+function road(x: number) {
+  if (x < ANCHORAGES[0]) return 55 + 120 * smooth((x - SOUTH_END) / -SOUTH_END);
+  if (x <= ANCHORAGES[1]) return 175 + 24 * Math.sin((Math.PI * x) / ANCHORAGES[1]);
+  return 55 + 120 * smooth((NORTH_END - x) / (NORTH_END - ANCHORAGES[1]));
 }
 
-function build(w: number, h: number, dpr: number): Scene {
+const trussDepth = (x: number) =>
+  x >= ANCHORAGES[0] && x <= ANCHORAGES[1] ? 38 : 26;
+
+function cable(x: number) {
+  const [south, north] = TOWERS;
+  const top = TOWER_HEIGHT - 12;
+  if (x <= south) {
+    const u = x / south;
+    return 170 + (top - 170) * u - 220 * u * (1 - u);
+  }
+  if (x <= north) {
+    const u = (x - (south + north) / 2) / ((north - south) / 2);
+    return 210 + (top - 210) * u * u;
+  }
+  const u = (x - north) / (ANCHORAGES[1] - north);
+  return top + (170 - top) * u - 220 * u * (1 - u);
+}
+
+// Place the camera so the near tower lands at `near` and the far tower at
+// `far` (fractions of the width), then back away until the near tower's top
+// sits at `top` (a fraction of the height).
+function makeCamera(
+  w: number,
+  h: number,
+  horizon: number,
+  anchor?: number,
+): Camera {
+  const narrow = w / h < 0.8;
+  const eyeX = narrow ? -1500 : -500;
+  const near = Math.min(anchor ?? 0.31 * w, 0.45 * w);
+  const s1 = near - w / 2;
+  const s2 = 0.8 * w - w / 2;
+  const rise = horizon - h * (narrow ? 0.13 : 0.1);
+
+  const aim = (distance: number) => {
+    const a1 = Math.atan2(TOWERS[0] - eyeX, distance);
+    const a2 = Math.atan2(TOWERS[1] - eyeX, distance);
+    let lo = a1;
+    let hi = a2;
+    for (let i = 0; i < 50; i++) {
+      const yaw = (lo + hi) / 2;
+      if (s2 * Math.tan(a1 - yaw) - s1 * Math.tan(a2 - yaw) > 0) lo = yaw;
+      else hi = yaw;
+    }
+    const yaw = (lo + hi) / 2;
+    const focal = s2 / Math.tan(a2 - yaw);
+    const depth = Math.hypot(TOWERS[0] - eyeX, distance) * Math.cos(a1 - yaw);
+    return { yaw, focal, top: (focal * (TOWER_HEIGHT - EYE_HEIGHT)) / depth };
+  };
+
+  let lo = 150;
+  let hi = 9000;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (aim(mid).top > rise) lo = mid;
+    else hi = mid;
+  }
+  const distance = (lo + hi) / 2;
+  const { yaw, focal } = aim(distance);
+  const sin = Math.sin(yaw);
+  const cos = Math.cos(yaw);
+
+  return {
+    focal,
+    project: (x, y, z) => {
+      const vx = x - eyeX;
+      const vz = z + distance;
+      const depth = vx * sin + vz * cos;
+      return {
+        x: w / 2 + (focal * (vx * cos - vz * sin)) / depth,
+        y: horizon - (focal * (y - EYE_HEIGHT)) / depth,
+        z: depth,
+      };
+    },
+  };
+}
+
+const horizonFor = (w: number, h: number) => Math.round(h * (w < 720 ? 0.6 : 0.62));
+
+// Screen width of the near tower, legs included, where it crosses the name.
+function nearTowerWidth(camera: Camera) {
+  const xs = [-1, 1].flatMap((side) =>
+    [-LEG_Z - 8, LEG_Z + 8].map(
+      (z) => camera.project(TOWERS[0] + side * 9, 440, z).x,
+    ),
+  );
+  return Math.max(...xs) - Math.min(...xs);
+}
+
+function build(w: number, h: number, dpr: number, anchor?: number): Scene {
   const rand = seeded(1957);
   const narrow = w < 720;
-  const horizon = Math.round(h * (narrow ? 0.64 : 0.69));
-  const deck = horizon - Math.max(16, h * 0.045);
-  const tL = w * (narrow ? 0.16 : 0.33);
-  const tR = w * (narrow ? 0.88 : 0.79);
-  const span = tR - tL;
-  const side = span * 0.5;
-  const towerTop = deck - Math.min(span * (narrow ? 1.4 : 0.68), h * 0.5);
-  const towerW = Math.max(4, w * 0.006);
-  const sag = deck - (deck - towerTop) * 0.07;
-  const truss = Math.max(4, h * 0.01);
+  const horizon = horizonFor(w, h);
+  const camera = makeCamera(w, h, horizon, anchor);
+  const P = camera.project;
+  const NEAR = 80;
+  const px = (feet: number, depth: number) => (camera.focal * feet) / depth;
 
-  const main = (x: number) => {
-    const u = (x - (tL + tR) / 2) / (span / 2);
-    return sag + (towerTop - sag) * u * u;
-  };
-  const sideCables = [
-    {
-      from: [tL, towerTop] as [number, number],
-      ctrl: [tL - side * 0.55, deck - (deck - towerTop) * 0.12] as [
-        number,
-        number,
-      ],
-      to: [tL - side, deck - 4] as [number, number],
-    },
-    {
-      from: [tR, towerTop] as [number, number],
-      ctrl: [tR + side * 0.55, deck - (deck - towerTop) * 0.12] as [
-        number,
-        number,
-      ],
-      to: [tR + side, deck - 4] as [number, number],
-    },
-  ];
-
-  // Sky, far shore, and water: everything that never moves.
+  // Sky, far shores, and water: everything that never moves.
   const bg = layer(w, h, dpr);
   const sky = bg.ctx.createLinearGradient(0, 0, 0, horizon);
   sky.addColorStop(0, "#050f26");
@@ -127,21 +209,24 @@ function build(w: number, h: number, dpr: number): Scene {
   bg.ctx.fillStyle = water;
   bg.ctx.fillRect(0, horizon, w, h - horizon);
 
-  bg.ctx.fillStyle = "#0a1630";
-  for (const [start, end, rise] of [
-    [-0.02, 0.24, 0.016],
-    [0.84, 1.02, 0.011],
-  ]) {
+  // Lake Michigan's far shore on the left, St. Ignace where the bridge lands.
+  const landing = P(NORTH_END, 0, 0);
+  const shores: [number, number, number][] = [
+    [-0.02, 0.2, 0.012],
+    [Math.min(0.92, landing.x / w - 0.03), 1.02, 0.014],
+  ];
+  for (const [start, end, rise] of shores) {
+    bg.ctx.fillStyle = "#0a1630";
     bg.ctx.beginPath();
-    bg.ctx.moveTo(w * start, horizon);
+    bg.ctx.moveTo(w * start, horizon + 1);
     for (let i = 0; i <= 24; i++) {
       const x = w * (start + ((end - start) * i) / 24);
-      const lift = Math.sin((i / 24) * Math.PI) ** 0.6;
+      const lift = Math.sin((i / 24) * Math.PI * 0.5 + 0.2) ** 0.6;
       bg.ctx.lineTo(x, horizon - h * rise * lift * (0.85 + rand() * 0.3));
     }
-    bg.ctx.lineTo(w * end, horizon);
+    bg.ctx.lineTo(w * end, horizon + 1);
     bg.ctx.fill();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 18; i++) {
       bg.ctx.fillStyle = `rgba(255, 214, 150, ${0.25 + rand() * 0.45})`;
       bg.ctx.fillRect(
         w * (start + (end - start) * rand()),
@@ -149,7 +234,6 @@ function build(w: number, h: number, dpr: number): Scene {
         1.2,
         1.2,
       );
-      bg.ctx.fillStyle = "#0a1630";
     }
   }
 
@@ -163,103 +247,227 @@ function build(w: number, h: number, dpr: number): Scene {
     bg.ctx.fillRect(rand() * w - len / 2, y, len, 1 + depth);
   }
 
-  // The bridge itself: piers, deck, suspenders, cables, towers.
+  // The bridge.
   const br = layer(w, h, dpr);
-  const steel = "#040b18";
-  br.ctx.fillStyle = steel;
-  const anchors = [tL - side, tR + side];
-  for (let x = -span / 14; x < w + span / 7; x += span / 7) {
-    if (x > anchors[0] + 6 && x < anchors[1] - 6) continue;
-    br.ctx.fillRect(x - 1.5, deck + truss, 3, horizon - deck - truss);
-  }
-  for (const x of anchors) {
-    br.ctx.fillRect(x - 9, deck - 6, 18, horizon - deck + 6);
-  }
-  br.ctx.fillRect(-2, deck, w + 4, truss);
-  br.ctx.strokeStyle = "rgba(130, 150, 185, 0.22)";
-  br.ctx.lineWidth = 0.75;
-  br.ctx.beginPath();
-  for (let x = 0; x < w; x += truss * 2) {
-    br.ctx.moveTo(x, deck);
-    br.ctx.lineTo(x + truss * 2, deck + truss);
-    br.ctx.moveTo(x + truss * 2, deck);
-    br.ctx.lineTo(x, deck + truss);
-  }
-  br.ctx.stroke();
-  br.ctx.fillStyle = "rgba(255, 210, 140, 0.32)";
-  br.ctx.fillRect(0, deck - 1, w, 1);
+  const ctx = br.ctx;
+  const xs: number[] = [];
+  for (let x = SOUTH_END; x <= NORTH_END; x += x < 9000 ? 25 : 120) xs.push(x);
 
-  br.ctx.strokeStyle = "rgba(196, 208, 226, 0.2)";
-  br.ctx.lineWidth = 0.75;
-  br.ctx.beginPath();
-  for (let x = tL + span / 64; x < tR; x += span / 64) {
-    br.ctx.moveTo(x, main(x));
-    br.ctx.lineTo(x, deck);
-  }
-  for (const c of sideCables) {
-    for (let i = 1; i < 32; i++) {
-      const [x, y] = quad(c.from, c.ctrl, c.to, i / 32);
-      br.ctx.moveTo(x, y);
-      br.ctx.lineTo(x, deck);
-    }
-  }
-  br.ctx.stroke();
+  const polygon = (points: Point[], fill: string | CanvasGradient) => {
+    if (points.some((p) => p.z < NEAR)) return;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    points.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.fill();
+  };
+  const line = (a: Point, b: Point, width: number, style: string) => {
+    if (a.z < NEAR || b.z < NEAR) return;
+    ctx.strokeStyle = style;
+    ctx.lineWidth = Math.max(0.6, width);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  };
+  const box = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    z0: number,
+    z1: number,
+    front: string,
+    side: string,
+  ) => {
+    polygon([P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1), P(x0, y1, z0)], side);
+    polygon([P(x0, y0, z0), P(x1, y0, z0), P(x1, y1, z0), P(x0, y1, z0)], front);
+  };
 
-  br.ctx.strokeStyle = "rgba(236, 216, 176, 0.62)";
-  br.ctx.lineWidth = Math.max(1, w * 0.0011);
-  br.ctx.beginPath();
-  br.ctx.moveTo(tL, towerTop);
-  for (let x = tL; x <= tR; x += 2) br.ctx.lineTo(x, main(x));
-  for (const c of sideCables) {
-    br.ctx.moveTo(...c.from);
-    br.ctx.quadraticCurveTo(...c.ctrl, ...c.to);
+  // Approach piers and the concrete under each tower and anchorage.
+  for (let x = SOUTH_END + 300; x < NORTH_END; x += x < 0 ? 420 : 480) {
+    if (x > ANCHORAGES[0] - 80 && x < ANCHORAGES[1] + 200) continue;
+    box(x - 8, x + 8, 0, road(x) - trussDepth(x), -26, 26, "#1f2a38", "#151e29");
   }
-  br.ctx.stroke();
+  for (const x of TOWERS) box(x - 40, x + 40, 0, 22, -58, 58, "#3a4250", "#2a313d");
 
-  for (const x of [tL, tR]) {
-    const lit = br.ctx.createLinearGradient(0, towerTop, 0, horizon);
-    lit.addColorStop(0, "#f6e2b6");
-    lit.addColorStop(0.45, "#b89c6c");
-    lit.addColorStop(1, "#2d2a2a");
-    br.ctx.fillStyle = lit;
-    br.ctx.beginPath();
-    br.ctx.moveTo(x - towerW * 0.42, towerTop - towerW);
-    br.ctx.lineTo(x + towerW * 0.42, towerTop - towerW);
-    br.ctx.lineTo(x + towerW * 0.6, horizon);
-    br.ctx.lineTo(x - towerW * 0.6, horizon);
-    br.ctx.fill();
-    br.ctx.fillStyle = "rgba(40, 30, 20, 0.35)";
-    for (let i = 1; i < 5; i++) {
-      const y = towerTop + ((deck - towerTop) * i) / 5;
-      br.ctx.fillRect(x - towerW * 0.6, y, towerW * 1.2, 1.5);
-    }
-  }
+  const leg = (tx: number, z: number) => {
+    const half = (y: number) => 11 - (4 * y) / TOWER_HEIGHT;
+    const top = P(tx, TOWER_HEIGHT, z);
+    const base = P(tx, 0, z);
+    const lit = ctx.createLinearGradient(0, top.y, 0, base.y);
+    lit.addColorStop(0, IVORY);
+    lit.addColorStop(0.55, "#c9b993");
+    lit.addColorStop(1, "#5b5547");
+    polygon(
+      [
+        P(tx - half(0), 0, z - 8),
+        P(tx + half(0), 0, z - 8),
+        P(tx + half(TOWER_HEIGHT), TOWER_HEIGHT, z - 8),
+        P(tx - half(TOWER_HEIGHT), TOWER_HEIGHT, z - 8),
+      ],
+      lit,
+    );
+    polygon(
+      [
+        P(tx - half(0), 0, z - 8),
+        P(tx - half(0), 0, z + 8),
+        P(tx - half(TOWER_HEIGHT), TOWER_HEIGHT, z + 8),
+        P(tx - half(TOWER_HEIGHT), TOWER_HEIGHT, z - 8),
+      ],
+      "rgba(120, 108, 84, 0.95)",
+    );
+    polygon(
+      [
+        P(tx - 9, TOWER_HEIGHT, z - 10),
+        P(tx + 9, TOWER_HEIGHT, z - 10),
+        P(tx + 9, TOWER_HEIGHT + 8, z - 10),
+        P(tx - 9, TOWER_HEIGHT + 8, z - 10),
+      ],
+      IVORY,
+    );
+  };
 
-  // Lamps strung along the cables and the roadway, lit left to right.
-  const lamps: Lamp[] = [];
-  const r = Math.max(1.4, Math.min(2.4, w * 0.0016));
-  const add = (x: number, y: number, size: number, streak: number) =>
-    lamps.push({
-      x,
-      y,
-      r: size,
-      streak,
-      seed: rand() * 100,
-      delay: IGNITE_START + (Math.max(0, x) / w) * IGNITE_SWEEP,
+  // Stacked X-bracing between the legs: the towers' signature.
+  const bracing = (tx: number) => {
+    const depth = P(tx, 300, 0).z;
+    const width = px(6, depth);
+    const levels = [215, 325, 435, TOWER_HEIGHT - 14];
+    const z = LEG_Z - 9;
+    const member = (y0: number, z0: number, y1: number, z1: number, w = width) =>
+      line(P(tx, y0, z0), P(tx, y1, z1), w, "#d8cba6");
+    member(26, -z, 150, z);
+    member(26, z, 150, -z);
+    member(150, -z, 150, z);
+    levels.forEach((y, i) => {
+      member(y, -z, y, z, i === levels.length - 1 ? width * 1.6 : width);
+      const next = levels[i + 1];
+      if (next) {
+        member(y, -z, next, z);
+        member(y, z, next, -z);
+      }
     });
-  for (let i = 1; i < 36; i++) {
-    const x = tL + (span * i) / 36;
-    add(x, main(x), r, 0.035);
+  };
+
+  const truss = (z: number, fill: string) => {
+    const top: Point[] = [];
+    const bottom: Point[] = [];
+    for (const x of xs) {
+      const a = P(x, road(x), z);
+      if (a.z < NEAR) continue;
+      top.push(a);
+      bottom.push(P(x, road(x) - trussDepth(x), z));
+    }
+    polygon([...top, ...bottom.reverse()], fill);
+    ctx.strokeStyle = "rgba(120, 160, 128, 0.32)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    for (let x = SOUTH_END; x < NORTH_END; x += 40) {
+      const a = P(x, road(x), z);
+      const b = P(x + 20, road(x + 20) - trussDepth(x + 20), z);
+      const c = P(x + 40, road(x + 40), z);
+      if (a.z < NEAR || Math.abs(c.x - a.x) < 5) continue;
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 210, 140, 0.3)";
+    for (let i = 1; i < top.length; i++) {
+      ctx.fillRect(top[i - 1].x, top[i - 1].y - 0.5, top[i].x - top[i - 1].x, 1);
+    }
+  };
+
+  const strands = (z: number, alpha: number) => {
+    ctx.strokeStyle = `rgba(200, 206, 214, ${alpha})`;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    let last = -Infinity;
+    for (let x = 50; x < ANCHORAGES[1]; x += 50) {
+      if (TOWERS.some((t) => Math.abs(x - t) < 20)) continue;
+      const a = P(x, cable(x), z);
+      if (a.z < NEAR || Math.abs(a.x - last) < 2.5) continue;
+      last = a.x;
+      const b = P(x, road(x), z);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+    }
+    ctx.stroke();
+    const mid = P(TOWERS[1] - 1900, 300, z);
+    ctx.strokeStyle = "rgba(226, 220, 196, 0.7)";
+    ctx.lineWidth = Math.max(1, px(2.5, mid.z));
+    ctx.beginPath();
+    let started = false;
+    for (let x = 0; x <= ANCHORAGES[1]; x += 20) {
+      const a = P(x, cable(x), z);
+      if (a.z < NEAR) continue;
+      if (started) ctx.lineTo(a.x, a.y);
+      else ctx.moveTo(a.x, a.y);
+      started = true;
+    }
+    ctx.stroke();
+  };
+
+  for (const tx of TOWERS) leg(tx, LEG_Z);
+  truss(CABLE_Z, FOLIAGE[0]);
+  strands(CABLE_Z, 0.14);
+  for (const tx of TOWERS) bracing(tx);
+
+  const underside: Point[] = [];
+  const farSide: Point[] = [];
+  for (const x of xs) {
+    const a = P(x, road(x) - trussDepth(x), -CABLE_Z);
+    if (a.z < NEAR) continue;
+    underside.push(a);
+    farSide.push(P(x, road(x) - trussDepth(x), CABLE_Z));
   }
-  for (const c of sideCables) {
-    for (let i = 1; i < 14; i++) {
-      const [x, y] = quad(c.from, c.ctrl, c.to, i / 14);
-      add(x, y, r, 0.035);
+  polygon([...underside, ...farSide.reverse()], "#09130f");
+
+  truss(-CABLE_Z, FOLIAGE[1]);
+  strands(-CABLE_Z, 0.2);
+  for (const tx of TOWERS) leg(tx, -LEG_Z);
+  for (const ax of ANCHORAGES) {
+    box(ax - 50, ax + 50, 0, road(ax) + 6, -50, 50, "#2c3542", "#202833");
+  }
+
+  // Necklace lights on both main cables and lamps along the roadway.
+  const lamps: Lamp[] = [];
+  const add = (x: number, y: number, z: number, scale: number, dim: number) => {
+    const p = P(x, y, z);
+    if (p.z < NEAR || p.x < -20 || p.x > w + 20) return;
+    const mirror = P(x, -y, z).y;
+    lamps.push({
+      x: p.x,
+      y: p.y,
+      r: Math.min(2.6, Math.max(0.55, px(scale, p.z))),
+      seed: rand() * 100,
+      mirror,
+      dim,
+      delay: IGNITE_START + (Math.max(0, p.x) / w) * IGNITE_SWEEP,
+    });
+  };
+  for (const z of [CABLE_Z, -CABLE_Z]) {
+    for (let x = 60; x < ANCHORAGES[1]; x += 105) {
+      if (TOWERS.some((t) => Math.abs(x - t) < 40)) continue;
+      add(x, cable(x) + 3, z, 3.2, z > 0 ? 0.7 : 1);
+    }
+    for (let x = SOUTH_END + 100; x < NORTH_END; x += 160) {
+      add(x, road(x) + 12, z, 2.4, z > 0 ? 0.55 : 0.85);
     }
   }
-  for (let x = w * 0.01; x < w; x += Math.max(16, w / 64)) {
-    add(x, deck - 2, r * 0.75, 0.08 + rand() * 0.1);
-  }
+
+  const beacons = TOWERS.flatMap((x) =>
+    [LEG_Z, -LEG_Z].map((z) => P(x, TOWER_HEIGHT + 14, z)),
+  );
+  const towers = TOWERS.map((x) => {
+    const base = P(x, 0, -LEG_Z);
+    return {
+      x: base.x,
+      y: base.y,
+      width: px(18, base.z),
+      length: (P(x, -TOWER_HEIGHT, -LEG_Z).y - base.y) * 0.55,
+    };
+  });
 
   const stars: Star[] = Array.from({ length: narrow ? 45 : 90 }, () => ({
     x: rand() * w,
@@ -273,14 +481,59 @@ function build(w: number, h: number, dpr: number): Scene {
     w,
     h,
     horizon,
+    camera,
     background: bg.canvas,
     bridge: br.canvas,
     lamps,
-    beacons: [tL, tR].map((x) => ({ x, y: towerTop - towerW * 1.6 })),
-    towers: [tL, tR],
-    towerW,
+    beacons,
+    towers,
     stars,
   };
+}
+
+// A Great Lakes freighter: long and low, pilothouse forward, engine room aft.
+// It steams east through the straits, under the main span.
+const SHIP_LENGTH = 730;
+const SHIP_SPEED = 30;
+const SHIP_PATH = [5600, -4200];
+const SHIP_PROFILE: [number, number][] = [
+  [0, 10],
+  [0, 50],
+  [0.025, 50],
+  [0.025, 92],
+  [0.1, 92],
+  [0.1, 46],
+  [0.84, 44],
+  [0.84, 80],
+  [0.9, 80],
+  [0.9, 108],
+  [0.935, 108],
+  [0.935, 80],
+  [0.985, 80],
+  [0.985, 46],
+  [1, 46],
+  [1, 10],
+];
+const SHIP_LIGHTS: [number, number, string][] = [
+  [0.012, 112, "255, 250, 235"],
+  [0.035, 84, "255, 214, 140"],
+  [0.05, 84, "255, 214, 140"],
+  [0.065, 84, "255, 214, 140"],
+  [0.08, 84, "255, 214, 140"],
+  [0.06, 72, "90, 255, 150"],
+  [0.25, 54, "255, 236, 200"],
+  [0.42, 54, "255, 236, 200"],
+  [0.59, 54, "255, 236, 200"],
+  [0.76, 54, "255, 236, 200"],
+  [0.87, 68, "255, 214, 140"],
+  [0.95, 68, "255, 214, 140"],
+  [1, 58, "255, 250, 235"],
+];
+
+function shipBow(seconds: number) {
+  const [from, to] = SHIP_PATH;
+  const span = from - to;
+  return from - ((4400 + seconds * SHIP_SPEED) % span);
 }
 
 function glowSprite(core: string, tint: string) {
@@ -296,6 +549,49 @@ function glowSprite(core: string, tint: string) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   return canvas;
+}
+
+function drawShip(
+  ctx: CanvasRenderingContext2D,
+  scene: Scene,
+  seconds: number,
+  still: boolean,
+) {
+  const bow = shipBow(still ? 0 : seconds);
+  const x = (TOWERS[0] + TOWERS[1]) / 2 + 250;
+  const at = (s: number, y: number) =>
+    scene.camera.project(x, y, bow + s * SHIP_LENGTH);
+  const hull = SHIP_PROFILE.map(([s, y]) => at(s, y));
+  if (hull.some((p) => p.z < 200)) return;
+  const xs = hull.map((p) => p.x);
+  if (Math.max(...xs) < -20 || Math.min(...xs) > scene.w + 20) return;
+
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#0a1220";
+  ctx.beginPath();
+  hull.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(170, 186, 210, 0.22)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.globalCompositeOperation = "lighter";
+  for (const [s, y, rgb] of SHIP_LIGHTS) {
+    const p = at(s, y);
+    const r = Math.max(0.8, Math.min(2, (scene.camera.focal * 2.4) / p.z));
+    ctx.fillStyle = `rgb(${rgb})`;
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(p.x - r / 2, p.y - r / 2, r, r);
+    const mirror = at(s, -y);
+    for (let yy = mirror.y - 6; yy < mirror.y + 10; yy += 3) {
+      ctx.globalAlpha =
+        0.25 * (0.5 + 0.5 * Math.sin(seconds * 2.4 + yy * 0.4 + s * 40));
+      ctx.fillRect(p.x - r + Math.sin(yy * 0.3 + seconds) * 1.5, yy, r * 2, 1.4);
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 export function StraitsScene({ children }: { children: ReactNode }) {
@@ -354,24 +650,28 @@ export function StraitsScene({ children }: { children: ReactNode }) {
       }
 
       bctx.globalCompositeOperation = "lighter";
-      for (const x of scene.towers) {
-        for (let y = horizon + 2; y < horizon + h * 0.24; y += 3) {
-          const k = (y - horizon) / (h * 0.24);
+      bctx.fillStyle = "#e7c793";
+      for (const tower of scene.towers) {
+        for (let y = tower.y; y < tower.y + tower.length; y += 3) {
+          const k = (y - tower.y) / tower.length;
           const sway = Math.sin(t * 1.1 + y * 0.08) * (1 + k * 6);
-          bctx.globalAlpha = 0.16 * (1 - k) ** 1.6;
-          bctx.fillStyle = "#e7c793";
-          bctx.fillRect(x - scene.towerW + sway, y, scene.towerW * 2, 2);
+          bctx.globalAlpha = 0.2 * (1 - k) ** 1.6;
+          bctx.fillRect(tower.x - tower.width / 2 + sway, y, tower.width, 2);
         }
       }
+      drawShip(bctx, scene, t, still.matches);
       bctx.fillStyle = "#ffc86e";
       for (const lamp of lamps) {
         const on = ignition(lamp, elapsed);
         if (on <= 0) continue;
-        // High cable lamps reflect deep in the water, so keep them faint.
-        const height = (horizon - lamp.y) / horizon;
-        const y0 = horizon + (horizon - lamp.y) * 0.9;
-        const len = h * lamp.streak;
-        const strength = on * (0.5 - height * 0.38 + lift(lamp.x) * 0.4);
+        // Reflections of high lamps land deep in the water; keep them faint.
+        const y0 = lamp.mirror;
+        if (y0 > h || lamp.r < 1) continue;
+        const reach = (y0 - horizon) / (h - horizon);
+        if (reach > 0.65) continue;
+        const len = lamp.r * h * 0.035;
+        const strength =
+          on * lamp.dim * (0.4 - reach * 0.45 + lift(lamp.x) * 0.4);
         for (let y = y0; y < y0 + len; y += 3) {
           const k = (y - y0) / len;
           const depth = (y - horizon) / (h - horizon);
@@ -400,7 +700,7 @@ export function StraitsScene({ children }: { children: ReactNode }) {
         if (on <= 0) continue;
         const near = lift(lamp.x);
         const size = lamp.r * (14 + near * 10);
-        fctx.globalAlpha = on * (0.8 + near * 0.2);
+        fctx.globalAlpha = on * lamp.dim * (0.8 + near * 0.2);
         fctx.drawImage(sprite, lamp.x - size / 2, lamp.y - size / 2, size, size);
       }
       const blink = still.matches ? 1 : 0.5 + 0.5 * Math.sin(t * 2.4);
@@ -408,10 +708,11 @@ export function StraitsScene({ children }: { children: ReactNode }) {
         fctx.globalAlpha = 0.35 + blink * 0.65;
         fctx.fillStyle = "#ff4b3e";
         fctx.beginPath();
-        fctx.arc(b.x, b.y, Math.max(1.4, scene.towerW * 0.32), 0, Math.PI * 2);
+        const r = Math.max(1, Math.min(2.4, scene.camera.focal * 3 / b.z));
+        fctx.arc(b.x, b.y, r, 0, Math.PI * 2);
         fctx.fill();
         fctx.globalAlpha = blink * 0.5;
-        const size = scene.towerW * 7;
+        const size = r * 16;
         fctx.drawImage(beacon, b.x - size / 2, b.y - size / 2, size, size);
       }
       fctx.globalAlpha = 1;
@@ -425,19 +726,57 @@ export function StraitsScene({ children }: { children: ReactNode }) {
       if (!raf) raf = requestAnimationFrame(loop);
     };
 
+    // Aim the near tower at the gap between first and last name, and widen
+    // that gap until the tower fits, so it frames the name instead of hiding
+    // a letter.
+    const nameGap = (left: number) => {
+      const text = root.querySelector("h1")?.firstChild;
+      const space = text?.textContent?.indexOf(" ") ?? -1;
+      if (!text || space < 1) return undefined;
+      const range = document.createRange();
+      range.setStart(text, 0);
+      range.setEnd(text, 1);
+      const first = range.getBoundingClientRect();
+      range.setStart(text, space + 1);
+      range.setEnd(text, space + 2);
+      const last = range.getBoundingClientRect();
+      range.setStart(text, space);
+      range.setEnd(text, space + 1);
+      const gap = range.getBoundingClientRect();
+      if (Math.abs(first.top - last.top) > 4) return undefined;
+      return { center: gap.left + gap.width / 2 - left, width: gap.width };
+    };
+
+    const fitName = (left: number, width: number, height: number) => {
+      const name = root.querySelector("h1");
+      if (!name) return undefined;
+      name.style.wordSpacing = "";
+      let gap = nameGap(left);
+      for (let i = 0; i < 3 && gap; i++) {
+        const camera = makeCamera(width, height, horizonFor(width, height), gap.center);
+        const need = nearTowerWidth(camera) * 1.3;
+        if (gap.width >= need) break;
+        const current = parseFloat(getComputedStyle(name).wordSpacing) || 0;
+        name.style.wordSpacing = `${current + need - gap.width}px`;
+        gap = nameGap(left);
+      }
+      return gap?.center;
+    };
+
     const resize = () => {
-      const { width, height } = root.getBoundingClientRect();
+      const { width, height, left } = root.getBoundingClientRect();
       if (!width || !height) return;
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       for (const canvas of [back, front]) {
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);
       }
-      scene = build(width, height, dpr);
+      scene = build(width, height, dpr, fitName(left, width, height));
       draw(performance.now());
       run();
     };
 
+    document.fonts?.ready.then(resize);
     const sizeObserver = new ResizeObserver(resize);
     sizeObserver.observe(root);
     const viewObserver = new IntersectionObserver(([entry]) => {
