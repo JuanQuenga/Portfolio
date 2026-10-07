@@ -48,7 +48,7 @@ const ANCHORAGES = [0, 7400];
 const SOUTH_END = -2800;
 const NORTH_END = 17000;
 const CABLE_Z = 34;
-const LEG_Z = 40;
+const LEG_Z = 44;
 const EYE_HEIGHT = 45;
 
 const IVORY = "#efe5c8";
@@ -215,14 +215,18 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
     [-0.02, 0.2, 0.012],
     [Math.min(0.92, landing.x / w - 0.03), 1.02, 0.014],
   ];
-  for (const [start, end, rise] of shores) {
+  shores.forEach(([start, end, rise], side) => {
     bg.ctx.fillStyle = "#0a1630";
     bg.ctx.beginPath();
     bg.ctx.moveTo(w * start, horizon + 1);
-    for (let i = 0; i <= 24; i++) {
-      const x = w * (start + ((end - start) * i) / 24);
-      const lift = Math.sin((i / 24) * Math.PI * 0.5 + 0.2) ** 0.6;
-      bg.ctx.lineTo(x, horizon - h * rise * lift * (0.85 + rand() * 0.3));
+    for (let i = 0; i <= 32; i++) {
+      const t = i / 32;
+      const x = w * (start + (end - start) * t);
+      // Each shore runs off-screen at one end and tapers into the water at
+      // the other.
+      const taper = smooth(Math.min(1, (side ? t : 1 - t) * 3));
+      const roll = 0.8 + 0.2 * Math.sin(t * 11 + side * 2);
+      bg.ctx.lineTo(x, horizon - h * rise * taper * roll * (0.92 + rand() * 0.16));
     }
     bg.ctx.lineTo(w * end, horizon + 1);
     bg.ctx.fill();
@@ -235,7 +239,7 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
         1.2,
       );
     }
-  }
+  });
 
   bg.ctx.fillStyle = "rgba(205, 220, 245, 0.22)";
   bg.ctx.fillRect(0, horizon, w, 1);
@@ -277,19 +281,42 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
     y1: number,
     z0: number,
     z1: number,
-    front: string,
-    side: string,
+    front: string | CanvasGradient,
+    side: string | CanvasGradient,
   ) => {
     polygon([P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1), P(x0, y1, z0)], side);
     polygon([P(x0, y0, z0), P(x1, y0, z0), P(x1, y1, z0), P(x0, y1, z0)], front);
   };
 
-  // Approach piers and the concrete under each tower and anchorage.
+  // Concrete lit from the roadway above, falling off toward the water.
+  const concrete = (x: number, y0: number, y1: number, z: number, lit: number) => {
+    const top = P(x, y1, z);
+    const base = P(x, y0, z);
+    const g = ctx.createLinearGradient(0, top.y, 0, base.y);
+    g.addColorStop(0, `rgb(${74 * lit}, ${82 * lit}, ${96 * lit})`);
+    g.addColorStop(1, `rgb(${18 * lit}, ${24 * lit}, ${34 * lit})`);
+    return g;
+  };
+
+  // Approach piers: twin columns under a cap beam.
   for (let x = SOUTH_END + 300; x < NORTH_END; x += x < 0 ? 420 : 480) {
-    if (x > ANCHORAGES[0] - 80 && x < ANCHORAGES[1] + 200) continue;
-    box(x - 8, x + 8, 0, road(x) - trussDepth(x), -26, 26, "#1f2a38", "#151e29");
+    if (x > ANCHORAGES[0] - 80 && x < ANCHORAGES[1] + 120) continue;
+    if (P(x, 0, 0).z < NEAR) continue;
+    const top = road(x) - trussDepth(x);
+    for (const z of [22, -22]) {
+      box(x - 5, x + 5, 0, top - 6, z - 5, z + 5, concrete(x, 0, top, z, 1), concrete(x, 0, top, z, 0.72));
+    }
+    box(x - 6, x + 6, top - 7, top, -30, 30, concrete(x, top - 7, top, -30, 1.1), concrete(x, top - 7, top, -30, 0.8));
   }
-  for (const x of TOWERS) box(x - 40, x + 40, 0, 22, -58, 58, "#3a4250", "#2a313d");
+  // Anchorages carry the deck; the cables disappear into them below it.
+  for (const ax of ANCHORAGES) {
+    const top = road(ax) - trussDepth(ax);
+    box(ax - 60, ax + 60, 0, top, -46, 46, concrete(ax, 0, top, -46, 1.05), concrete(ax, 0, top, -46, 0.75));
+  }
+  // Tower caissons, just proud of the water.
+  for (const x of TOWERS) {
+    box(x - 34, x + 34, -2, 14, -54, 54, concrete(x, -2, 14, -54, 0.8), concrete(x, -2, 14, -54, 0.6));
+  }
 
   const leg = (tx: number, z: number) => {
     const half = (y: number) => 11 - (4 * y) / TOWER_HEIGHT;
@@ -315,16 +342,7 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
         P(tx - half(TOWER_HEIGHT), TOWER_HEIGHT, z + 8),
         P(tx - half(TOWER_HEIGHT), TOWER_HEIGHT, z - 8),
       ],
-      "rgba(120, 108, 84, 0.95)",
-    );
-    polygon(
-      [
-        P(tx - 9, TOWER_HEIGHT, z - 10),
-        P(tx + 9, TOWER_HEIGHT, z - 10),
-        P(tx + 9, TOWER_HEIGHT + 8, z - 10),
-        P(tx - 9, TOWER_HEIGHT + 8, z - 10),
-      ],
-      IVORY,
+      "#786c54",
     );
   };
 
@@ -359,23 +377,26 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
       bottom.push(P(x, road(x) - trussDepth(x), z));
     }
     polygon([...top, ...bottom.reverse()], fill);
-    ctx.strokeStyle = "rgba(120, 160, 128, 0.32)";
+    // Panels fade out as they crowd together in the distance.
     ctx.lineWidth = 0.8;
-    ctx.beginPath();
     for (let x = SOUTH_END; x < NORTH_END; x += 40) {
       const a = P(x, road(x), z);
       const b = P(x + 20, road(x + 20) - trussDepth(x + 20), z);
       const c = P(x + 40, road(x + 40), z);
-      if (a.z < NEAR || Math.abs(c.x - a.x) < 5) continue;
+      const fade = Math.min(1, Math.max(0, (Math.abs(c.x - a.x) - 3) / 8));
+      if (a.z < NEAR || fade <= 0) continue;
+      ctx.strokeStyle = `rgba(120, 160, 128, ${0.32 * fade})`;
+      ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.lineTo(c.x, c.y);
+      ctx.stroke();
     }
+    ctx.strokeStyle = "rgba(255, 210, 140, 0.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    top.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
     ctx.stroke();
-    ctx.fillStyle = "rgba(255, 210, 140, 0.3)";
-    for (let i = 1; i < top.length; i++) {
-      ctx.fillRect(top[i - 1].x, top[i - 1].y - 0.5, top[i].x - top[i - 1].x, 1);
-    }
   };
 
   const strands = (z: number, alpha: number) => {
@@ -408,10 +429,11 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
     ctx.stroke();
   };
 
+  // Bracing first, so each leg covers the ends of its members.
+  for (const tx of TOWERS) bracing(tx);
   for (const tx of TOWERS) leg(tx, LEG_Z);
   truss(CABLE_Z, FOLIAGE[0]);
   strands(CABLE_Z, 0.14);
-  for (const tx of TOWERS) bracing(tx);
 
   const underside: Point[] = [];
   const farSide: Point[] = [];
@@ -426,9 +448,6 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
   truss(-CABLE_Z, FOLIAGE[1]);
   strands(-CABLE_Z, 0.2);
   for (const tx of TOWERS) leg(tx, -LEG_Z);
-  for (const ax of ANCHORAGES) {
-    box(ax - 50, ax + 50, 0, road(ax) + 6, -50, 50, "#2c3542", "#202833");
-  }
 
   // Necklace lights on both main cables and lamps along the roadway.
   const lamps: Lamp[] = [];
@@ -457,17 +476,20 @@ function build(w: number, h: number, dpr: number, anchor?: number): Scene {
   }
 
   const beacons = TOWERS.flatMap((x) =>
-    [LEG_Z, -LEG_Z].map((z) => P(x, TOWER_HEIGHT + 14, z)),
+    [LEG_Z, -LEG_Z].map((z) => P(x, TOWER_HEIGHT + 6, z - 8)),
   );
-  const towers = TOWERS.map((x) => {
-    const base = P(x, 0, -LEG_Z);
-    return {
-      x: base.x,
-      y: base.y,
-      width: px(18, base.z),
-      length: (P(x, -TOWER_HEIGHT, -LEG_Z).y - base.y) * 0.55,
-    };
-  });
+  // One reflection per leg, starting where the caisson meets the water.
+  const towers = TOWERS.flatMap((x) =>
+    [LEG_Z, -LEG_Z].map((z) => {
+      const base = P(x, 0, z - 8);
+      return {
+        x: base.x,
+        y: base.y,
+        width: px(16, base.z),
+        length: (P(x, -TOWER_HEIGHT, z - 8).y - base.y) * 0.5,
+      };
+    }),
+  );
 
   const stars: Star[] = Array.from({ length: narrow ? 45 : 90 }, () => ({
     x: rand() * w,
@@ -497,7 +519,7 @@ const SHIP_LENGTH = 730;
 const SHIP_SPEED = 30;
 const SHIP_PATH = [5600, -4200];
 const SHIP_PROFILE: [number, number][] = [
-  [0, 10],
+  [0, -3],
   [0, 50],
   [0.025, 50],
   [0.025, 92],
@@ -512,7 +534,7 @@ const SHIP_PROFILE: [number, number][] = [
   [0.985, 80],
   [0.985, 46],
   [1, 46],
-  [1, 10],
+  [1, -3],
 ];
 const SHIP_LIGHTS: [number, number, string][] = [
   [0.012, 112, "255, 250, 235"],
@@ -550,6 +572,10 @@ function glowSprite(core: string, tint: string) {
   ctx.fillRect(0, 0, size, size);
   return canvas;
 }
+
+// Once the ship's midpoint passes under the deck it is nearer than the
+// bridge, so it moves from the back layer to the front one.
+const shipInFront = (seconds: number) => shipBow(seconds) + SHIP_LENGTH / 2 < 0;
 
 function drawShip(
   ctx: CanvasRenderingContext2D,
@@ -652,14 +678,19 @@ export function StraitsScene({ children }: { children: ReactNode }) {
       bctx.globalCompositeOperation = "lighter";
       bctx.fillStyle = "#e7c793";
       for (const tower of scene.towers) {
-        for (let y = tower.y; y < tower.y + tower.length; y += 3) {
+        for (let y = tower.y; y < tower.y + tower.length; y += 2) {
           const k = (y - tower.y) / tower.length;
-          const sway = Math.sin(t * 1.1 + y * 0.08) * (1 + k * 6);
-          bctx.globalAlpha = 0.2 * (1 - k) ** 1.6;
-          bctx.fillRect(tower.x - tower.width / 2 + sway, y, tower.width, 2);
+          const sway =
+            (Math.sin(t * 1.1 + y * 0.09) + Math.sin(y * 0.031 - t * 0.7) * 0.5) *
+            (0.6 + k * 4);
+          const ripple = 0.85 + 0.15 * Math.sin(y * 0.23 + t * 2.2);
+          bctx.globalAlpha = 0.14 * (1 - k) ** 1.5 * ripple;
+          const width = tower.width * (1 - k * 0.4);
+          bctx.fillRect(tower.x - width / 2 + sway, y, width, 2);
         }
       }
-      drawShip(bctx, scene, t, still.matches);
+      const shipAhead = !still.matches && shipInFront(t);
+      if (!shipAhead) drawShip(bctx, scene, t, still.matches);
       bctx.fillStyle = "#ffc86e";
       for (const lamp of lamps) {
         const on = ignition(lamp, elapsed);
@@ -671,7 +702,10 @@ export function StraitsScene({ children }: { children: ReactNode }) {
         if (reach > 0.65) continue;
         const len = lamp.r * h * 0.035;
         const strength =
-          on * lamp.dim * (0.4 - reach * 0.45 + lift(lamp.x) * 0.4);
+          on *
+          lamp.dim *
+          Math.min(1, lamp.r / 2) *
+          (0.4 - reach * 0.45 + lift(lamp.x) * 0.4);
         for (let y = y0; y < y0 + len; y += 3) {
           const k = (y - y0) / len;
           const depth = (y - horizon) / (h - horizon);
@@ -694,6 +728,7 @@ export function StraitsScene({ children }: { children: ReactNode }) {
       fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       fctx.globalCompositeOperation = "source-over";
       fctx.drawImage(scene.bridge, 0, 0, w, h);
+      if (shipAhead) drawShip(fctx, scene, t, false);
       fctx.globalCompositeOperation = "lighter";
       for (const lamp of lamps) {
         const on = ignition(lamp, elapsed);
