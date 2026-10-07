@@ -24,7 +24,7 @@ assert.doesNotMatch(
 assert.equal(
   (html.match(/lucide-arrow-up-right/g) ?? []).length,
   6,
-  "Keep one external-link arrow per project card and one on the featured preview",
+  "Keep exactly one external-link arrow per project",
 );
 assert.doesNotMatch(html, /lucide-arrow-down|contact-arrow|↗/);
 assert.match(html, /<select[^>]*class="theme-select"/);
@@ -66,6 +66,7 @@ for (const id of ["work", "about", "contact"]) {
   assert.match(html, new RegExp(`href="#${id}"`), `Missing ${id} navigation`);
 }
 for (const [host, image] of [
+  ["statsconnect.app", "statsconnect"],
   ["volt-scanner.vercel.app", "volt"],
   ["clashcrown.vercel.app", "clashcrown"],
   ["brawlstatsio.vercel.app", "brawlstats"],
@@ -92,7 +93,7 @@ const css = await readFile(
 for (const match of css.matchAll(/letter-spacing:\s*(-?[\d.]+)em/g)) {
   assert.ok(
     Number(match[1]) >= -0.03,
-    "Montserrat tracking must not be tighter than -0.03em",
+    "Display tracking must not be tighter than -0.03em",
   );
 }
 assert.doesNotMatch(source, /piggies/i);
@@ -103,5 +104,5 @@ await assert.rejects(
 const removedAsset = await fetch(new URL("/screenshots/piggies.png", base));
 assert.equal(removedAsset.status, 404, "Removed screenshot must return 404");
 console.log(
-  "Portfolio checks passed: SSR, navigation, contact, five previews, arrow restraint, and six theme initialization cases.",
+  "Portfolio checks passed: SSR, navigation, contact, six previews, arrow restraint, and six theme initialization cases.",
 );

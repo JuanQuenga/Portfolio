@@ -1,7 +1,20 @@
+import { useState } from "react";
 import { ArrowUpRight, Github } from "lucide-react";
+import { StraitsScene } from "@/components/straits-scene";
 import { ThemeSelect } from "@/components/theme-select";
 
 const projects = [
+  {
+    title: "StatsConnect",
+    category: "Player stats platform",
+    summary: "Your players, battles, and progress, together.",
+    description:
+      "Clash Royale and Brawl Stars statistics in one place, with player lookup and Google sign-in.",
+    href: "https://statsconnect.app",
+    image: "/screenshots/statsconnect.png",
+    alt: "StatsConnect home page for Clash Royale and Brawl Stars player statistics",
+    tone: "stats",
+  },
   {
     title: "Volt",
     category: "Product tool",
@@ -36,7 +49,7 @@ const projects = [
     tone: "brawl",
   },
   {
-    title: "Herman's Modern Bakery",
+    title: "Herman’s Modern Bakery",
     category: "Business website",
     summary: "A neighborhood bakery, online.",
     description:
@@ -58,16 +71,10 @@ const projects = [
     tone: "auto",
   },
 ];
-const skills = [
-  "TypeScript",
-  "React",
-  "Next.js",
-  "TanStack",
-  "Convex",
-  "Tailwind CSS",
-];
 
 export default function PortfolioExperience() {
+  const [active, setActive] = useState(0);
+
   return (
     <div className="portfolio" id="home">
       <a className="skip-link" href="#main">
@@ -75,207 +82,129 @@ export default function PortfolioExperience() {
       </a>
       <header className="site-header page-width">
         <a className="brand" href="#home" aria-label="Juan Quenga, home">
-          <img
-            className="brand-mark"
-            src="/favicon.svg"
-            width={49}
-            height={49}
-            alt=""
-          />
-          <span>
-            Juan Quenga<span className="brand-role">Software engineer</span>
-          </span>
+          <img src="/favicon.svg" width={40} height={40} alt="" />
+          <span>Software engineer</span>
         </a>
         <nav aria-label="Main navigation">
           <a href="#work">Work</a>
           <a href="#about">About</a>
-          <a href="#contact">Let’s talk</a>
+          <a href="#contact">Contact</a>
           <ThemeSelect />
         </nav>
       </header>
       <main id="main">
-        <section className="hero page-width" aria-labelledby="hero-title">
-          <div className="hero-copy">
-            <h1 id="hero-title">
-              Ideas into
-              <br />
-              <span>interfaces.</span>
+        <section className="hero" aria-labelledby="hero-title">
+          <StraitsScene>
+            <h1 className="hero-name page-width" id="hero-title">
+              Juan Quenga
             </h1>
+          </StraitsScene>
+          <div className="hero-foot page-width">
             <p className="hero-intro">
-              I’m Juan, a self-taught software engineer in Southeast Michigan. I
-              build thoughtful websites and web apps that make everyday things a
-              little easier.
+              I’m a self-taught software engineer in Southeast Michigan. I build
+              websites and web apps that make everyday things a little easier.
             </p>
             <div className="hero-actions">
-              <a className="button button-blue" href="#work">
-                Explore my work
+              <a className="button" href="#work">
+                See my work
               </a>
-              <a className="text-link" href="#contact">
-                Have something in mind?
+              <a className="quiet-link" href="#contact">
+                Get in touch
               </a>
             </div>
+            <p className="hero-caption">The Mackinac Bridge, drawn in code</p>
           </div>
-          <a
-            className="hero-art"
-            href="https://volt-scanner.vercel.app/"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Explore Volt, featured project, opens in a new tab"
+        </section>
+
+        <section className="work page-width" id="work" aria-labelledby="work-title">
+          <div className="section-head">
+            <h2 id="work-title">Selected work</h2>
+            <p>
+              Product tools, websites for local businesses, and stat companions
+              for Clash Royale and Brawl Stars.
+            </p>
+          </div>
+          <div
+            className="work-index"
+            style={{ gridTemplateRows: `repeat(${projects.length}, auto) 1fr` }}
           >
-            <div className="art-grid" aria-hidden="true" />
-            <span className="art-label">A closer look at Volt</span>
-            <span className="art-asterisk" aria-hidden="true">
-              ✳
-            </span>
-            <div className="browser-window">
-              <div className="browser-bar" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <p>volt-scanner.vercel.app</p>
-              </div>
-              <img
-                src="/screenshots/volt.png"
-                alt="Volt's product scanning interface"
-                width={1440}
-                height={900}
-                fetchPriority="high"
-              />
-            </div>
-            <span className="art-project">
-              Meet Volt <ArrowUpRight size={18} aria-hidden="true" />
-            </span>
-          </a>
-          <div className="hero-bottom">
-            <span>Design-minded. Detail-driven.</span>
-            <span>Scroll to see what I’ve been building</span>
-          </div>
-        </section>
-        <section
-          className="work-section"
-          id="work"
-          aria-labelledby="work-title"
-        >
-          <div className="page-width">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Selected work</p>
-                <h2 id="work-title">Made real.</h2>
-              </div>
-              <p>
-                Useful tools. Local businesses.
-                <br />A few things I’ve put out into the world.
-              </p>
-            </div>
-            <div className="project-grid">
-              {projects.map((project) => (
-                <article
-                  className={`project project-${project.tone}`}
-                  key={project.title}
+            {projects.map((project, index) => (
+              <article
+                className="work-item"
+                data-tone={project.tone}
+                data-active={index === active}
+                key={project.title}
+              >
+                <a
+                  className="work-row"
+                  style={{ gridRow: index + 1 }}
+                  href={project.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onMouseEnter={() => setActive(index)}
+                  onFocus={() => setActive(index)}
                 >
-                  <a
-                    className="project-image-link"
-                    href={project.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Visit ${project.title}, opens in a new tab`}
-                  >
-                    <div className="project-image-top">
-                      <span>{project.category}</span>
-                    </div>
-                    <div className="project-screen">
-                      <img
-                        src={project.image}
-                        alt={project.alt}
-                        width={1440}
-                        height={900}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </div>
-                    <span className="project-visit">
-                      Explore live site{" "}
-                      <ArrowUpRight aria-hidden="true" size={16} />
-                    </span>
-                  </a>
-                  <div className="project-info">
-                    <div>
-                      <h3>
-                        <a href={project.href} target="_blank" rel="noreferrer">
-                          {project.title}
-                          <span className="sr-only">, opens in a new tab</span>
-                        </a>
-                      </h3>
-                      <p className="project-summary">{project.summary}</p>
-                    </div>
-                    <p className="project-description">{project.description}</p>
+                  <span className="work-lamp" aria-hidden="true" />
+                  <h3>{project.title}</h3>
+                  <span className="work-kind">{project.category}</span>
+                  <ArrowUpRight className="work-arrow" size={22} aria-hidden="true" />
+                  <span className="sr-only">, opens in a new tab</span>
+                </a>
+                <figure className="work-figure">
+                  <div className="work-screen">
+                    <img
+                      src={project.image}
+                      alt={project.alt}
+                      width={1440}
+                      height={900}
+                      loading={index === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                    />
                   </div>
-                </article>
-              ))}
-            </div>
+                  <figcaption>
+                    <strong>{project.summary}</strong> {project.description}
+                  </figcaption>
+                </figure>
+              </article>
+            ))}
           </div>
         </section>
-        <section
-          className="about-section page-width"
-          id="about"
-          aria-labelledby="about-title"
-        >
-          <div className="about-heading">
-            <p className="eyebrow">A little about me</p>
-            <h2 id="about-title">
-              Curious by nature.
-              <br />
-              <span>Builder by choice.</span>
-            </h2>
-            <div className="location">
-              <span className="blue-dot" /> Southeast Michigan, USA
-            </div>
-          </div>
-          <div className="about-copy">
-            <p className="about-lead">
-              I like figuring things out, then making them work for someone
-              else.
+
+        <section className="about page-width" id="about" aria-labelledby="about-title">
+          <h2 id="about-title">
+            I like figuring things out, then making them work for someone else.
+          </h2>
+          <div className="about-body">
+            <p>
+              I’m self-taught and work across the frontend and backend. My
+              projects range from game statistics to product scanning and
+              websites for local businesses.
             </p>
             <p>
-              I’m a self-taught software engineer working across the frontend
-              and backend. My projects range from game statistics to product
-              scanning and websites for local businesses.
+              I care about readable interfaces and the code behind them. Most
+              days that means TypeScript and React, with Next.js, TanStack,
+              Convex, and Tailwind CSS connecting what people see with the data
+              they need.
             </p>
-            <p>
-              I care about readable interfaces and the code behind them. I work
-              with TypeScript, React, and modern web tools to connect what
-              people see with the data they need.
-            </p>
-            <div className="skill-list" aria-label="Technologies I work with">
-              {skills.map((skill) => (
-                <span key={skill}>{skill}</span>
-              ))}
-            </div>
             <a
-              className="text-link"
+              className="quiet-link"
               href="https://github.com/JuanQuenga"
               target="_blank"
               rel="noreferrer"
             >
-              <Github size={18} aria-hidden="true" /> A look at my code
+              <Github size={18} aria-hidden="true" /> Read my code on GitHub
               <span className="sr-only">, opens in a new tab</span>
             </a>
           </div>
         </section>
-        <section
-          className="contact-section"
-          id="contact"
-          aria-labelledby="contact-title"
-        >
+
+        <section className="contact" id="contact" aria-labelledby="contact-title">
           <div className="page-width">
-            <p className="eyebrow">What’s next?</p>
-            <div className="contact-heading">
-              <h2 id="contact-title">
-                Good things start
-                <br />
-                with a hello.
-              </h2>
-            </div>
+            <h2 id="contact-title">Tell me what you’re working on.</h2>
+            <p className="contact-note">
+              Hiring for your team or planning a project? Email is the quickest
+              way to reach me.
+            </p>
             <div className="contact-intents">
               <a href="mailto:juanquenga@gmail.com?subject=Engineering%20opportunity">
                 Discuss a role
@@ -284,39 +213,22 @@ export default function PortfolioExperience() {
                 Start a project
               </a>
             </div>
-            <div className="contact-bottom">
-              <p>
-                Hiring for your team or planning a project?
-                <br />
-                I’d like to hear what you’re working on.
-              </p>
-              <a href="mailto:juanquenga@gmail.com?subject=Let%E2%80%99s%20work%20together">
-                juanquenga@gmail.com
-              </a>
-            </div>
+            <a
+              className="contact-email"
+              href="mailto:juanquenga@gmail.com?subject=Let%E2%80%99s%20work%20together"
+            >
+              juanquenga@gmail.com
+            </a>
           </div>
         </section>
       </main>
       <footer className="site-footer page-width">
-        <a
-          href="#home"
-          className="footer-name"
-          aria-label="Juan Quenga, back to top"
-        >
-          Juan Quenga
+        <span>Juan Quenga, built in Michigan.</span>
+        <a href="https://github.com/JuanQuenga" target="_blank" rel="noreferrer">
+          GitHub
+          <span className="sr-only">, opens in a new tab</span>
         </a>
-        <div className="footer-bottom">
-          <span>Built with care in Michigan.</span>
-          <a
-            href="https://github.com/JuanQuenga"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub
-            <span className="sr-only">, opens in a new tab</span>
-          </a>
-          <a href="#home">Back to top</a>
-        </div>
+        <a href="#home">Back to top</a>
       </footer>
     </div>
   );

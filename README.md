@@ -10,7 +10,8 @@ A modern, responsive portfolio website built with TanStack Start, React 19, and 
 
 - Screenshot-led portfolio with native section navigation
 - Responsive design for mobile, tablet, and desktop
-- Five project previews with live-site links
+- Six project previews with live-site links
+- Live canvas illustration of the Mackinac Bridge in the hero (`components/straits-scene.tsx`)
 - Separate contact paths for hiring and project inquiries
 - TanStack Start SSR build powered by Vite and Nitro
 
