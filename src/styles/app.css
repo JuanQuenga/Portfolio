@@ -168,11 +168,34 @@ figure {
 }
 
 /* Hero */
+/*
+  The sky and water are painted in CSS too, matching the canvas, so the
+  scene is there on first paint while the script that draws the bridge
+  loads. Keep the stops in sync with build() in straits-scene.tsx.
+*/
 .hero {
+  --horizon: 62%;
   position: relative;
   display: grid;
   min-height: max(640px, 100svh);
-  background: var(--night);
+  background:
+    radial-gradient(
+        70% 58% at 10% 100%,
+        rgb(240 164 108 / 0.42),
+        rgb(196 120 110 / 0.14) 45%,
+        transparent
+      )
+      top / 100% var(--horizon) no-repeat,
+    linear-gradient(
+      180deg,
+      #050f26 0%,
+      #0e2652 calc(var(--horizon) * 0.5),
+      #284777 calc(var(--horizon) * 0.86),
+      #4b5f86 var(--horizon),
+      #1c3863 var(--horizon),
+      #0e2346 calc(var(--horizon) + (100% - var(--horizon)) * 0.35),
+      var(--night) 100%
+    );
   color: #e8eef4;
   overflow: clip;
   --focus: var(--lamp);
@@ -190,6 +213,11 @@ figure {
 }
 .scene-front {
   z-index: 2;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease-out);
+}
+.scene-front[data-drawn] {
+  opacity: 1;
 }
 .hero-name {
   position: relative;
@@ -199,9 +227,11 @@ figure {
   font-weight: 800;
   line-height: 0.86;
   letter-spacing: -0.03em;
+  /* Roughly the room the near tower needs; the scene fine-tunes it. */
+  word-spacing: 0.55em;
   color: #f1f4f8;
   text-wrap: balance;
-  animation: name-rise 1.1s var(--ease-out) both;
+  animation: name-rise 0.9s var(--ease-out) both;
 }
 @keyframes name-rise {
   from {
@@ -219,7 +249,7 @@ figure {
   align-items: end;
   gap: 24px 48px;
   padding-bottom: clamp(32px, 6svh, 64px);
-  animation: foot-in 0.9s 1.5s var(--ease-out) both;
+  animation: foot-in 0.8s 0.25s var(--ease-out) both;
 }
 @keyframes foot-in {
   from {
@@ -622,6 +652,9 @@ h2 {
   }
   .site-header nav a[href="#about"] {
     display: none;
+  }
+  .hero {
+    --horizon: 60%;
   }
   .hero-name {
     padding-top: 112px;

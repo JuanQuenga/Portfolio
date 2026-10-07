@@ -636,7 +636,7 @@ export function StraitsScene({ children }: { children: ReactNode }) {
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sprite = glowSprite("255, 236, 190", "244, 178, 84");
     const beacon = glowSprite("255, 150, 130", "255, 70, 56");
-    const start = performance.now();
+    let start = performance.now();
     let scene: Scene | null = null;
     let dpr = 1;
     let raf = 0;
@@ -798,9 +798,12 @@ export function StraitsScene({ children }: { children: ReactNode }) {
       return gap?.center;
     };
 
+    // Aiming the tower depends on the name's real width, so hold the first
+    // draw until the web font is in (or a short timeout passes).
+    let fontsSettled = false;
     const resize = () => {
       const { width, height, left } = root.getBoundingClientRect();
-      if (!width || !height) return;
+      if (!fontsSettled || !width || !height) return;
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       for (const canvas of [back, front]) {
         canvas.width = Math.round(width * dpr);
@@ -808,10 +811,23 @@ export function StraitsScene({ children }: { children: ReactNode }) {
       }
       scene = build(width, height, dpr, fitName(left, width, height));
       draw(performance.now());
+      front.dataset.drawn = "";
       run();
     };
 
-    document.fonts?.ready.then(resize);
+    const fontsIn = document.fonts?.ready ?? Promise.resolve();
+    let fontsLate = false;
+    Promise.race([
+      fontsIn.then(() => false),
+      new Promise<boolean>((done) => setTimeout(() => done(true), 700)),
+    ]).then((late) => {
+      fontsLate = late;
+      fontsSettled = true;
+      start = performance.now();
+      resize();
+    });
+    // If the font arrives after the timeout, re-aim the tower at the new gap.
+    fontsIn.then(() => fontsLate && resize());
     const sizeObserver = new ResizeObserver(resize);
     sizeObserver.observe(root);
     const viewObserver = new IntersectionObserver(([entry]) => {
